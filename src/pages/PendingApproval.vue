@@ -56,13 +56,18 @@ async function handleLogout() {
 
         <div v-if="error" class="alert alert-error">{{ error }}</div>
 
-        <button
-          class="btn btn-primary"
-          @click="saveName"
-          :disabled="saving"
-        >
-          {{ saving ? 'Opslaan…' : 'Opslaan' }}
-        </button>
+        <div class="row" style="justify-content: space-between">
+          <button class="btn btn-secondary btn-sm" @click="handleLogout">
+            Uitloggen
+          </button>
+          <button
+            class="btn btn-primary"
+            @click="saveName"
+            :disabled="saving"
+          >
+            {{ saving ? 'Opslaan…' : 'Opslaan' }}
+          </button>
+        </div>
       </template>
 
       <template v-else>

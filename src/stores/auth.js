@@ -112,10 +112,19 @@ export const useAuthStore = defineStore('auth', {
 
     async updateProfile(patch) {
       if (!this.session?.user?.id) throw new Error('Niet ingelogd')
+      // Upsert (insert-of-update) zodat een ontbrekend profiel zichzelf
+      // herstelt — vangrail tegen handmatige database-mutaties of zeldzame
+      // race condities met de auth trigger.
       const { data, error } = await supabase
         .from('profiles')
-        .update(patch)
-        .eq('id', this.session.user.id)
+        .upsert(
+          {
+            id: this.session.user.id,
+            email: this.session.user.email,
+            ...patch
+          },
+          { onConflict: 'id' }
+        )
         .select()
         .single()
       if (error) throw error

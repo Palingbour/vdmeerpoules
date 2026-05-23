@@ -2,40 +2,24 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 
 const routes = [
-  {
-    path: '/login',
-    name: 'login',
-    component: () => import('../pages/Login.vue'),
-    meta: { public: true }
-  },
-  {
-    path: '/wachten',
-    name: 'pending',
-    component: () => import('../pages/PendingApproval.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/',
-    name: 'dashboard',
-    component: () => import('../pages/Dashboard.vue'),
-    meta: { requiresAuth: true, requiresActive: true }
-  },
-  {
-    path: '/profiel',
-    name: 'profile',
-    component: () => import('../pages/Profile.vue'),
-    meta: { requiresAuth: true, requiresActive: true }
-  },
-  {
-    path: '/beheer/leden',
-    name: 'admin-members',
-    component: () => import('../pages/admin/Members.vue'),
-    meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true }
-  },
-  {
-    path: '/:pathMatch(.*)*',
-    redirect: '/'
-  }
+  { path: '/login', name: 'login', component: () => import('../pages/Login.vue'), meta: { public: true } },
+  { path: '/wachten', name: 'pending', component: () => import('../pages/PendingApproval.vue'), meta: { requiresAuth: true } },
+
+  { path: '/', name: 'dashboard', component: () => import('../pages/Dashboard.vue'), meta: { requiresAuth: true, requiresActive: true } },
+  { path: '/profiel', name: 'profile', component: () => import('../pages/Profile.vue'), meta: { requiresAuth: true, requiresActive: true } },
+
+  // Voorspellingsschermen
+  { path: '/voorspellen/poules', name: 'predict-round1', component: () => import('../pages/predictions/Round1Matches.vue'), meta: { requiresAuth: true, requiresActive: true } },
+  { path: '/voorspellen/eindstanden', name: 'predict-round2', component: () => import('../pages/predictions/Round2Standings.vue'), meta: { requiresAuth: true, requiresActive: true } },
+  { path: '/voorspellen/bonusvragen', name: 'predict-round8', component: () => import('../pages/predictions/Round8Bonus.vue'), meta: { requiresAuth: true, requiresActive: true } },
+
+  // Admin
+  { path: '/beheer/leden', name: 'admin-members', component: () => import('../pages/admin/Members.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
+  { path: '/beheer/wedstrijden', name: 'admin-matches', component: () => import('../pages/admin/Matches.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
+  { path: '/beheer/deadlines', name: 'admin-deadlines', component: () => import('../pages/admin/Deadlines.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
+  { path: '/beheer/bonusantwoorden', name: 'admin-bonus', component: () => import('../pages/admin/BonusAnswers.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
+
+  { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
 
 export const router = createRouter({
@@ -66,7 +50,6 @@ router.beforeEach(async (to) => {
     return { name: 'dashboard' }
   }
 
-  // Active users die per ongeluk naar /wachten gaan
   if (to.name === 'pending' && auth.isActive) {
     return { name: 'dashboard' }
   }
