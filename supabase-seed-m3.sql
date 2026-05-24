@@ -12,6 +12,9 @@
 -- TEAMS — 48 landen, groep A t/m L
 -- code = ISO-2 (voor flagcdn.com), behalve gb-eng/gb-sct
 -- ============================================================
+-- Schema-patch: code-kolom verbreden voor flagcdn-codes als gb-eng/gb-sct
+alter table public.teams alter column code type text;
+
 insert into public.teams (name, code, group_letter, flag_url) values
   -- Groep A
   ('Mexico',           'mx',     'A', 'https://flagcdn.com/w80/mx.png'),
