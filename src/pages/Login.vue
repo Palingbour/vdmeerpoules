@@ -1,34 +1,51 @@
 <script setup>
 import { ref } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
+import { useRouter } from 'vue-router'
 
 const auth = useAuthStore()
+const router = useRouter()
 
+const mode = ref('login') // 'login' or 'signup'
 const email = ref('')
+const password = ref('')
 const fullName = ref('')
-const isFirstTime = ref(false)
-const sent = ref(false)
 const error = ref('')
+const submitting = ref(false)
 
 async function handleSubmit() {
   error.value = ''
-  if (!email.value.trim()) {
-    error.value = 'Vul je e-mailadres in.'
-    return
-  }
-  if (isFirstTime.value && !fullName.value.trim()) {
+  if (!email.value.trim()) { error.value = 'Vul je e-mailadres in.'; return }
+  if (!password.value) { error.value = 'Vul je wachtwoord in.'; return }
+  if (password.value.length < 6) { error.value = 'Wachtwoord is minstens 6 tekens.'; return }
+  if (mode.value === 'signup' && !fullName.value.trim()) {
     error.value = 'Vul je naam in zodat de beheerder weet wie je bent.'
     return
   }
+
+  submitting.value = true
   try {
-    await auth.signInWithMagicLink(
-      email.value.trim(),
-      isFirstTime.value ? fullName.value.trim() : null
-    )
-    sent.value = true
+    if (mode.value === 'signup') {
+      await auth.signUp(email.value.trim(), password.value, fullName.value.trim())
+    } else {
+      await auth.signInWithPassword(email.value.trim(), password.value)
+    }
+    // Doorverwijzen: dashboard als active, anders wachtkamer
+    router.push(auth.isActive ? '/' : '/wachten')
   } catch (e) {
-    error.value = e.message || 'Er ging iets mis. Probeer het opnieuw.'
+    error.value = humanizeError(e.message)
+  } finally {
+    submitting.value = false
   }
+}
+
+function humanizeError(msg) {
+  if (!msg) return 'Er ging iets mis. Probeer het opnieuw.'
+  if (msg.includes('Invalid login credentials')) return 'E-mail of wachtwoord klopt niet.'
+  if (msg.includes('User already registered')) return 'Dit e-mailadres heeft al een account. Klik op "Inloggen".'
+  if (msg.includes('Password should be')) return 'Wachtwoord moet minimaal 6 tekens zijn.'
+  if (msg.includes('Email not confirmed')) return 'Je e-mail is nog niet bevestigd.'
+  return msg
 }
 </script>
 
@@ -38,33 +55,29 @@ async function handleSubmit() {
       <p class="eyebrow">WK 2026 · familietoto</p>
       <h1>Van der Meer Poules</h1>
       <p class="muted">
-        De familietraditie sinds 2012, nu digitaal. Voorspel
-        uitslagen, jaag op de pot, schop de neef van zijn troon.
+        De familietraditie sinds 2012, nu digitaal. Voorspel uitslagen,
+        jaag op de pot, schop de neef van zijn troon.
       </p>
     </div>
 
-    <div class="card" v-if="!sent">
+    <div class="card">
       <div class="row-between" style="margin-bottom: var(--s-5)">
         <button
           type="button"
           class="btn btn-sm"
-          :class="!isFirstTime ? 'btn-primary' : 'btn-secondary'"
-          @click="isFirstTime = false"
-        >
-          Ik doe al mee
-        </button>
+          :class="mode === 'login' ? 'btn-primary' : 'btn-secondary'"
+          @click="mode = 'login'; error = ''"
+        >Inloggen</button>
         <button
           type="button"
           class="btn btn-sm"
-          :class="isFirstTime ? 'btn-primary' : 'btn-secondary'"
-          @click="isFirstTime = true"
-        >
-          Voor het eerst
-        </button>
+          :class="mode === 'signup' ? 'btn-primary' : 'btn-secondary'"
+          @click="mode = 'signup'; error = ''"
+        >Account aanmaken</button>
       </div>
 
       <form @submit.prevent="handleSubmit">
-        <div v-if="isFirstTime" class="field">
+        <div v-if="mode === 'signup'" class="field">
           <label for="name">Hoe heet je?</label>
           <input
             id="name"
@@ -86,7 +99,21 @@ async function handleSubmit() {
             placeholder="naam@voorbeeld.nl"
             required
           />
-          <span class="hint">Je ontvangt een inloglink, geen wachtwoord nodig.</span>
+        </div>
+
+        <div class="field">
+          <label for="password">Wachtwoord</label>
+          <input
+            id="password"
+            v-model="password"
+            type="password"
+            :autocomplete="mode === 'signup' ? 'new-password' : 'current-password'"
+            placeholder="Minimaal 6 tekens"
+            required
+          />
+          <span v-if="mode === 'signup'" class="hint">
+            Kies iets dat je makkelijk onthoudt. Vergeten kan altijd hersteld worden door de beheerder.
+          </span>
         </div>
 
         <div v-if="error" class="alert alert-error">{{ error }}</div>
@@ -95,36 +122,20 @@ async function handleSubmit() {
           type="submit"
           class="btn btn-primary"
           style="width: 100%"
-          :disabled="auth.loading"
+          :disabled="submitting"
         >
-          {{ auth.loading ? 'Even geduld…' : 'Stuur me een inloglink' }}
+          {{ submitting ? 'Even geduld…' : (mode === 'signup' ? 'Account aanmaken' : 'Inloggen') }}
         </button>
       </form>
-    </div>
 
-    <div class="card" v-else>
-      <h3>Check je mail</h3>
-      <p>
-        We hebben een inloglink gestuurd naar
-        <strong>{{ email }}</strong>. Klik op de link in de mail
-        om in te loggen. De link werkt eenmalig en verloopt na een uur.
-      </p>
-      <p class="muted" style="margin-top: var(--s-4)">
-        Geen mail ontvangen? Kijk in je spamfolder, of
-        <a href="#" @click.prevent="sent = false">probeer opnieuw</a>.
+      <p v-if="mode === 'login'" class="muted" style="margin-top: var(--s-4); font-size: 0.875rem; text-align: center">
+        Wachtwoord vergeten? Vraag de beheerder om 'm te resetten.
       </p>
     </div>
   </main>
 </template>
 
 <style scoped>
-.login-hero {
-  text-align: center;
-  margin-bottom: var(--s-7);
-}
-.login-hero p.muted {
-  max-width: 36ch;
-  margin-left: auto;
-  margin-right: auto;
-}
+.login-hero { text-align: center; margin-bottom: var(--s-7); }
+.login-hero p.muted { max-width: 36ch; margin-left: auto; margin-right: auto; }
 </style>

@@ -91,19 +91,24 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async signInWithMagicLink(email, fullName = null) {
+    async signInWithPassword(email, password) {
       this.loading = true
       try {
-        const opts = {
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async signUp(email, password, fullName) {
+      this.loading = true
+      try {
+        const { error } = await supabase.auth.signUp({
           email,
-          options: {
-            emailRedirectTo: window.location.origin + '/'
-          }
-        }
-        if (fullName) {
-          opts.options.data = { full_name: fullName }
-        }
-        const { error } = await supabase.auth.signInWithOtp(opts)
+          password,
+          options: { data: { full_name: fullName } }
+        })
         if (error) throw error
       } finally {
         this.loading = false
