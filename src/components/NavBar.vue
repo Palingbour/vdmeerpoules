@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase.js'
@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase.js'
 const auth = useAuthStore()
 const router = useRouter()
 const adminOpen = ref(false)
+const dropdownRef = ref(null)
 const pendingCount = ref(0)
 let channel = null
 
@@ -24,10 +25,15 @@ async function loadPendingCount() {
   if (!error) pendingCount.value = count || 0
 }
 
+function handleClickOutside(e) {
+  if (dropdownRef.value && !dropdownRef.value.contains(e.target)) {
+    adminOpen.value = false
+  }
+}
+
 onMounted(() => {
   loadPendingCount()
-  // Realtime subscriptie: zodra een profiel verandert (nieuwe aanmelding,
-  // goedkeuring, etc.) verversen we de teller. Geen polling nodig.
+  document.addEventListener('click', handleClickOutside)
   channel = supabase
     .channel('navbar-profiles-watch')
     .on(
@@ -39,6 +45,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
   if (channel) supabase.removeChannel(channel)
 })
 </script>
@@ -54,20 +61,20 @@ onUnmounted(() => {
         <router-link to="/voorspellen/poules">Voorspellen</router-link>
         <router-link to="/profiel">Profiel</router-link>
 
-        <div
-          v-if="auth.isAdmin"
-          class="admin-dropdown"
-          @mouseenter="adminOpen = true"
-          @mouseleave="adminOpen = false"
-        >
-          <span class="admin-trigger" @click="adminOpen = !adminOpen">
+        <div v-if="auth.isAdmin" class="admin-dropdown" ref="dropdownRef">
+          <button
+            type="button"
+            class="admin-trigger"
+            :class="{ open: adminOpen }"
+            @click.stop="adminOpen = !adminOpen"
+          >
             Beheer
             <span v-if="pendingCount > 0" class="badge">{{ pendingCount }}</span>
-            ▾
-          </span>
+            <span class="caret">▾</span>
+          </button>
           <div v-if="adminOpen" class="dropdown-menu">
             <router-link to="/beheer/leden" @click="adminOpen = false">
-              Leden
+              <span>Leden</span>
               <span v-if="pendingCount > 0" class="badge badge-inline">{{ pendingCount }}</span>
             </router-link>
             <router-link to="/beheer/wedstrijden" @click="adminOpen = false">Wedstrijden</router-link>
@@ -85,18 +92,31 @@ onUnmounted(() => {
 <style scoped>
 .admin-dropdown {
   position: relative;
-  cursor: pointer;
 }
 .admin-trigger {
+  background: transparent;
+  border: none;
   color: var(--ink-soft);
   font-size: 0.9375rem;
   font-weight: 500;
-  padding: 4px 0;
+  padding: 6px 8px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: var(--r-sm);
+  transition: background 0.1s, color 0.1s;
 }
-.admin-trigger:hover { color: var(--ink); }
+.admin-trigger:hover { color: var(--ink); background: var(--bg-elev); }
+.admin-trigger.open { color: var(--ink); background: var(--bg-elev); }
+.caret {
+  font-size: 0.75rem;
+  transition: transform 0.15s;
+}
+.admin-trigger.open .caret {
+  transform: rotate(180deg);
+}
 .badge {
   display: inline-flex;
   align-items: center;
@@ -117,7 +137,7 @@ onUnmounted(() => {
 }
 .dropdown-menu {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 4px);
   right: 0;
   background: var(--bg-card);
   border: 1px solid var(--line);
@@ -138,6 +158,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  text-decoration: none;
 }
 .dropdown-menu a:hover {
   background: var(--bg-elev);
