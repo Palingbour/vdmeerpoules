@@ -10,6 +10,7 @@ const questions = ref([])
 const teams = ref([])
 const answers = ref({})              // question_id -> answer
 const savedStatus = ref({})
+const questionPoints = ref({})       // question_id -> points_awarded
 const loading = ref(true)
 const error = ref('')
 const saveTimers = {}
@@ -50,16 +51,20 @@ async function load() {
 
   const ansMap = {}
   const statusMap = {}
+  const pointsMap = {}
   for (const q of questions.value) {
     ansMap[q.id] = ''
     statusMap[q.id] = null
+    pointsMap[q.id] = 0
   }
   for (const p of predsRes.data || []) {
     ansMap[p.question_id] = p.answer
     statusMap[p.question_id] = 'ok'
+    pointsMap[p.question_id] = p.points_awarded || 0
   }
   answers.value = ansMap
   savedStatus.value = statusMap
+  questionPoints.value = pointsMap
 
   loading.value = false
 }
@@ -110,6 +115,19 @@ function scoringLabel(q) {
   if (q.scoring_type === 'closest') return '10 / 5 / 2 pt voor de drie dichtstbij'
   return '5 pt bij exact goed'
 }
+
+function hasCorrectAnswer(q) {
+  return q.correct_answer !== null && q.correct_answer !== ''
+}
+
+function getQuestionClass(q) {
+  if (!hasCorrectAnswer(q)) return ''
+  const pts = questionPoints.value[q.id] || 0
+  if (pts >= 10) return 'scored scored-q-10'
+  if (pts >= 5) return 'scored scored-q-5'
+  if (pts >= 2) return 'scored scored-q-2'
+  return 'scored scored-q-0'
+}
 </script>
 
 <template>
@@ -143,15 +161,28 @@ function scoringLabel(q) {
     <div v-if="loading" class="muted">Laden…</div>
 
     <div v-else class="questions-list">
-      <div v-for="q in questions" :key="q.id" class="question-card">
+      <div
+        v-for="q in questions"
+        :key="q.id"
+        class="question-card"
+        :class="getQuestionClass(q)"
+      >
         <div class="q-header">
           <span class="q-num mono">{{ q.display_order / 10 | 0 }}{{ q.is_bonus ? '·bonus' : '' }}</span>
           <span class="q-scoring">{{ scoringLabel(q) }}</span>
-          <span class="save-pill" :class="`save-${savedStatus[q.id] || 'none'}`">
+          <span v-if="hasCorrectAnswer(q)" class="points-badge" :class="`points-${questionPoints[q.id] || 0}`">
+            {{ questionPoints[q.id] > 0 ? '+' : '' }}{{ questionPoints[q.id] || 0 }} pt
+          </span>
+          <span v-else class="save-pill" :class="`save-${savedStatus[q.id] || 'none'}`">
             {{ { ok: '✓', saving: '⟳', error: '✕', none: '' }[savedStatus[q.id] || 'none'] }}
           </span>
         </div>
         <p class="q-text">{{ q.question_text }}</p>
+
+        <div v-if="hasCorrectAnswer(q)" class="correct-answer">
+          <span class="ca-label">Juiste antwoord:</span>
+          <strong>{{ q.correct_answer }}</strong>
+        </div>
 
         <div class="q-input">
           <!-- Numeric -->
@@ -206,6 +237,44 @@ function scoringLabel(q) {
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   padding: var(--s-4) var(--s-5);
+  border-left: 4px solid var(--line);
+  transition: border-left-color 0.2s;
+}
+.question-card.scored-q-10 { border-left-color: #2d8045; background: linear-gradient(to right, rgba(45, 128, 69, 0.08), var(--bg-card) 40%); }
+.question-card.scored-q-5 { border-left-color: #4a9963; background: linear-gradient(to right, rgba(74, 153, 99, 0.05), var(--bg-card) 40%); }
+.question-card.scored-q-2 { border-left-color: #c8541d; background: linear-gradient(to right, rgba(200, 84, 29, 0.05), var(--bg-card) 40%); }
+.question-card.scored-q-0 { border-left-color: #b8b8b8; opacity: 0.85; }
+.points-badge {
+  margin-left: auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.points-badge.points-10 { background: #2d8045; color: white; }
+.points-badge.points-5 { background: #4a9963; color: white; }
+.points-badge.points-2 { background: #c8541d; color: white; }
+.points-badge.points-0 { background: var(--bg-elev); color: var(--ink-mute); }
+.correct-answer {
+  margin: var(--s-2) 0 var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  background: var(--bg-elev);
+  border-radius: var(--r-sm);
+  font-size: 0.875rem;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.ca-label {
+  color: var(--ink-mute);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--font-mono);
+  font-weight: 600;
 }
 .q-header {
   display: flex;

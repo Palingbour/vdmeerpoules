@@ -9,6 +9,8 @@ const round = ref(null)
 const teamsByGroup = ref({})
 const orders = ref({})              // group_letter -> array of team_ids in order 1-4
 const savedStatus = ref({})         // group_letter -> 'ok'|'saving'|'error'|null
+const groupResults = ref({})        // group_letter -> {pos1,pos2,pos3,pos4} actual ranking
+const groupPoints = ref({})         // group_letter -> points_awarded
 const loading = ref(true)
 const error = ref('')
 const draggingFrom = ref(null)
@@ -29,18 +31,20 @@ async function load() {
   loading.value = true
   error.value = ''
 
-  const [roundRes, teamsRes, predsRes] = await Promise.all([
+  const [roundRes, teamsRes, predsRes, resultsRes] = await Promise.all([
     supabase.from('rounds').select('*').eq('nr', 2).single(),
     supabase.from('teams').select('*').order('group_letter').order('name'),
     supabase
       .from('group_predictions')
       .select('*')
-      .eq('user_id', auth.profile.id)
+      .eq('user_id', auth.profile.id),
+    supabase.from('group_results').select('*')
   ])
 
   if (roundRes.error) error.value = roundRes.error.message
   if (teamsRes.error) error.value = teamsRes.error.message
   if (predsRes.error) error.value = predsRes.error.message
+  if (resultsRes.error) error.value = resultsRes.error.message
 
   round.value = roundRes.data
 
@@ -53,16 +57,26 @@ async function load() {
 
   const orderMap = {}
   const statusMap = {}
+  const pointsMap = {}
   for (const letter of Object.keys(grouped)) {
     orderMap[letter] = grouped[letter].map((t) => t.id)
     statusMap[letter] = null
+    pointsMap[letter] = 0
   }
   for (const p of predsRes.data || []) {
     orderMap[p.group_letter] = [p.pos1_team_id, p.pos2_team_id, p.pos3_team_id, p.pos4_team_id]
     statusMap[p.group_letter] = 'ok'
+    pointsMap[p.group_letter] = p.points_awarded || 0
   }
   orders.value = orderMap
   savedStatus.value = statusMap
+  groupPoints.value = pointsMap
+
+  const resMap = {}
+  for (const r of resultsRes.data || []) {
+    resMap[r.group_letter] = [r.pos1_team_id, r.pos2_team_id, r.pos3_team_id, r.pos4_team_id]
+  }
+  groupResults.value = resMap
 
   loading.value = false
 }
@@ -161,6 +175,22 @@ function fmtDeadline(d) {
 }
 
 const groupLetters = computed(() => Object.keys(teamsByGroup.value).sort())
+
+function isPositionCorrect(letter, idx) {
+  const actual = groupResults.value[letter]
+  if (!actual) return null
+  return orders.value[letter]?.[idx] === actual[idx]
+}
+
+function hasResultFor(letter) {
+  return !!groupResults.value[letter]
+}
+
+function getCardClass(letter) {
+  if (!hasResultFor(letter)) return ''
+  const pts = groupPoints.value[letter] || 0
+  return `scored scored-r2-${pts}`
+}
 </script>
 
 <template>
@@ -194,10 +224,13 @@ const groupLetters = computed(() => Object.keys(teamsByGroup.value).sort())
     <div v-if="loading" class="muted">Laden…</div>
 
     <div v-else class="groups-grid">
-      <div v-for="letter in groupLetters" :key="letter" class="group-card">
+      <div v-for="letter in groupLetters" :key="letter" class="group-card" :class="getCardClass(letter)">
         <div class="group-header">
           <h3 style="margin: 0">Poule {{ letter }}</h3>
-          <span class="save-pill" :class="`save-${savedStatus[letter] || 'none'}`">
+          <span v-if="hasResultFor(letter)" class="points-badge" :class="`points-r2-${groupPoints[letter] || 0}`">
+            {{ groupPoints[letter] > 0 ? '+' : '' }}{{ groupPoints[letter] || 0 }} pt
+          </span>
+          <span v-else class="save-pill" :class="`save-${savedStatus[letter] || 'none'}`">
             {{ {
               ok: '✓ opgeslagen',
               saving: 'opslaan…',
@@ -212,7 +245,11 @@ const groupLetters = computed(() => Object.keys(teamsByGroup.value).sort())
             v-for="(_, idx) in [0,1,2,3]"
             :key="idx"
             class="standing-row"
-            :draggable="!deadlinePassed"
+            :class="{
+              'pos-correct': isPositionCorrect(letter, idx) === true,
+              'pos-wrong':   isPositionCorrect(letter, idx) === false
+            }"
+            :draggable="!deadlinePassed && !hasResultFor(letter)"
             @dragstart="onDragStart(letter, idx, $event)"
             @dragover="onDragOver"
             @drop="onDrop(letter, idx)"
@@ -257,6 +294,35 @@ const groupLetters = computed(() => Object.keys(teamsByGroup.value).sort())
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   padding: var(--s-4);
+  border-left: 4px solid var(--line);
+  transition: border-left-color 0.2s;
+}
+.group-card.scored-r2-4 { border-left-color: #2d8045; background: linear-gradient(to right, rgba(45, 128, 69, 0.06), var(--bg-card) 30%); }
+.group-card.scored-r2-3 { border-left-color: #4a9963; background: linear-gradient(to right, rgba(74, 153, 99, 0.05), var(--bg-card) 30%); }
+.group-card.scored-r2-2 { border-left-color: #c8541d; background: linear-gradient(to right, rgba(200, 84, 29, 0.05), var(--bg-card) 30%); }
+.group-card.scored-r2-1 { border-left-color: #d99358; }
+.group-card.scored-r2-0 { border-left-color: #b8b8b8; }
+.points-badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.points-badge.points-r2-4 { background: #2d8045; color: white; }
+.points-badge.points-r2-3 { background: #4a9963; color: white; }
+.points-badge.points-r2-2 { background: #c8541d; color: white; }
+.points-badge.points-r2-1 { background: #d99358; color: white; }
+.points-badge.points-r2-0 { background: var(--bg-elev); color: var(--ink-mute); }
+.standing-row.pos-correct {
+  background: rgba(45, 128, 69, 0.1);
+  border-color: rgba(45, 128, 69, 0.3);
+}
+.standing-row.pos-wrong {
+  background: rgba(220, 70, 70, 0.04);
+  opacity: 0.85;
 }
 .group-header {
   display: flex;

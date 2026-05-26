@@ -40,6 +40,7 @@ async function load() {
       .from('matches')
       .select(`
         id, match_number, kickoff_at, city, stadium,
+        score_home, score_away, status,
         team_home:teams!matches_team_home_id_fkey(id, name, code, group_letter, flag_url),
         team_away:teams!matches_team_away_id_fkey(id, name, code, group_letter, flag_url)
       `)
@@ -61,14 +62,15 @@ async function load() {
 
   const map = {}
   for (const m of matches.value) {
-    map[m.id] = { score_home: '', score_away: '', saved: null }
+    map[m.id] = { score_home: '', score_away: '', saved: null, points_awarded: 0 }
   }
   for (const p of predsRes.data || []) {
     if (map[p.match_id]) {
       map[p.match_id] = {
         score_home: p.score_home,
         score_away: p.score_away,
-        saved: 'ok'
+        saved: 'ok',
+        points_awarded: p.points_awarded || 0
       }
     }
   }
@@ -140,6 +142,18 @@ async function savePrediction(matchId) {
 }
 
 const groupLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
+
+function hasPredictionFor(m) {
+  const p = predictions.value[m.id]
+  return p && p.score_home !== '' && p.score_away !== '' && p.score_home !== null
+}
+
+function getScoreClass(m) {
+  if (m.status !== 'finished') return ''
+  if (!hasPredictionFor(m)) return 'scored scored-none'
+  const pts = predictions.value[m.id]?.points_awarded || 0
+  return `scored scored-${pts}`
+}
 </script>
 
 <template>
@@ -193,12 +207,23 @@ const groupLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'
           v-for="m in filteredMatches"
           :key="m.id"
           class="match-card"
+          :class="getScoreClass(m)"
         >
           <div class="match-meta">
             <span class="match-num mono">#{{ m.match_number }}</span>
             <span class="match-group">Poule {{ m.team_home.group_letter }}</span>
             <span class="match-date mono">{{ fmtDate(m.kickoff_at) }}</span>
             <span class="match-city muted">{{ m.city }}</span>
+            <span v-if="m.status === 'finished'" class="match-finished mono">
+              gespeeld: {{ m.score_home }}–{{ m.score_away }}
+            </span>
+            <span
+              v-if="m.status === 'finished' && hasPredictionFor(m)"
+              class="points-badge"
+              :class="`points-${predictions[m.id].points_awarded}`"
+            >
+              {{ predictions[m.id].points_awarded > 0 ? '+' : '' }}{{ predictions[m.id].points_awarded }} pt
+            </span>
           </div>
 
           <div class="match-teams">
@@ -284,6 +309,54 @@ const groupLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   padding: var(--s-4) var(--s-5);
+  border-left: 4px solid var(--line);
+  transition: border-left-color 0.2s;
+}
+.match-card.scored-5 {
+  border-left-color: #2d8045;
+  background: linear-gradient(to right, rgba(45, 128, 69, 0.06), var(--bg-card) 40%);
+}
+.match-card.scored-2 {
+  border-left-color: #c8541d;
+  background: linear-gradient(to right, rgba(200, 84, 29, 0.06), var(--bg-card) 40%);
+}
+.match-card.scored-0 {
+  border-left-color: #b8b8b8;
+}
+.match-card.scored-none {
+  border-left-color: var(--line);
+  opacity: 0.7;
+}
+.match-finished {
+  background: var(--bg-elev);
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--ink-soft);
+}
+.points-badge {
+  margin-left: auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.points-badge.points-5 {
+  background: #2d8045;
+  color: white;
+}
+.points-badge.points-2 {
+  background: #c8541d;
+  color: white;
+}
+.points-badge.points-0 {
+  background: var(--bg-elev);
+  color: var(--ink-mute);
 }
 .match-meta {
   display: flex;
