@@ -57,7 +57,8 @@ onUnmounted(() => {
         <span class="brand-mark"></span>Van der Meer Poules
       </router-link>
       <div class="nav-links">
-        <router-link to="/">Stand</router-link>
+        <router-link to="/">Overzicht</router-link>
+        <router-link to="/stand">Stand</router-link>
         <router-link to="/voorspellen/poules">Voorspellen</router-link>
         <router-link to="/profiel">Profiel</router-link>
 

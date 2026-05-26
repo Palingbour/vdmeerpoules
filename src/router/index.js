@@ -6,6 +6,7 @@ const routes = [
   { path: '/wachten', name: 'pending', component: () => import('../pages/PendingApproval.vue'), meta: { requiresAuth: true } },
 
   { path: '/', name: 'dashboard', component: () => import('../pages/Dashboard.vue'), meta: { requiresAuth: true, requiresActive: true } },
+  { path: '/stand', name: 'standings', component: () => import('../pages/Standings.vue'), meta: { requiresAuth: true, requiresActive: true } },
   { path: '/profiel', name: 'profile', component: () => import('../pages/Profile.vue'), meta: { requiresAuth: true, requiresActive: true } },
 
   // Voorspellingsschermen
