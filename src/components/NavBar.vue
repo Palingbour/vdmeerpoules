@@ -79,6 +79,7 @@ onUnmounted(() => {
               <span v-if="pendingCount > 0" class="badge badge-inline">{{ pendingCount }}</span>
             </router-link>
             <router-link to="/beheer/wedstrijden" @click="adminOpen = false">Wedstrijden</router-link>
+            <router-link to="/beheer/eindstanden" @click="adminOpen = false">Eindstanden poules</router-link>
             <router-link to="/beheer/deadlines" @click="adminOpen = false">Deadlines</router-link>
             <router-link to="/beheer/bonusantwoorden" @click="adminOpen = false">Bonusantwoorden</router-link>
           </div>

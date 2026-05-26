@@ -17,6 +17,7 @@ const routes = [
   // Admin
   { path: '/beheer/leden', name: 'admin-members', component: () => import('../pages/admin/Members.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
   { path: '/beheer/wedstrijden', name: 'admin-matches', component: () => import('../pages/admin/Matches.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
+  { path: '/beheer/eindstanden', name: 'admin-group-results', component: () => import('../pages/admin/GroupResults.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
   { path: '/beheer/deadlines', name: 'admin-deadlines', component: () => import('../pages/admin/Deadlines.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
   { path: '/beheer/bonusantwoorden', name: 'admin-bonus', component: () => import('../pages/admin/BonusAnswers.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
 
