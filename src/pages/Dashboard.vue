@@ -13,6 +13,7 @@ const bonusPredCount = ref(0)
 const totalMatches = ref(0)
 const totalGroups = ref(0)
 const totalBonus = ref(0)
+const myStanding = ref(null)         // { rank, total, totalMembers, totalPoints }
 const loading = ref(true)
 const now = ref(new Date())
 const tickInterval = ref(null)
@@ -44,10 +45,11 @@ async function load() {
       supabase.from('matches').select('id', { count: 'exact', head: true }).eq('round_nr', 1),
       supabase.from('groups').select('letter', { count: 'exact', head: true }),
       supabase.from('bonus_questions').select('id', { count: 'exact', head: true }),
-      supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(3)
+      supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(3),
+      supabase.from('user_standings').select('id, total_points').order('total_points', { ascending: false }).order('exact_count', { ascending: false }).order('full_name')
     ])
 
-    const labels = ['rounds', 'match_predictions', 'group_predictions', 'bonus_predictions', 'matches', 'groups', 'bonus_questions', 'announcements']
+    const labels = ['rounds', 'match_predictions', 'group_predictions', 'bonus_predictions', 'matches', 'groups', 'bonus_questions', 'announcements', 'user_standings']
     results.forEach((r, i) => {
       if (r.status === 'rejected') {
         console.error(`[Dashboard] Query ${labels[i]} faalde:`, r.reason)
@@ -66,6 +68,18 @@ async function load() {
     totalGroups.value = get(5).count || 0
     totalBonus.value = get(6).count || 0
     announcements.value = get(7).data || []
+
+    // Mijn positie in de stand
+    const allStandings = get(8).data || []
+    if (allStandings.length > 0 && auth.profile?.id) {
+      const myIdx = allStandings.findIndex(s => s.id === auth.profile.id)
+      const me = allStandings.find(s => s.id === auth.profile.id)
+      myStanding.value = {
+        rank: myIdx >= 0 ? myIdx + 1 : null,
+        totalMembers: allStandings.length,
+        totalPoints: me?.total_points || 0
+      }
+    }
   } catch (e) {
     console.error('[Dashboard] Algemene fout in load():', e)
   } finally {
@@ -78,6 +92,16 @@ const nextDeadline = computed(() => {
     .filter((r) => r.deadline && new Date(r.deadline) > now.value)
     .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
   return future[0] || null
+})
+
+// Alle openstaande deadlines die op het EERSTKOMENDE tijdstip vallen
+// (zo zien gebruikers dat R1, R2 en R8 allemaal op 11 juni 18:00 sluiten)
+const upcomingDeadlines = computed(() => {
+  if (!nextDeadline.value) return []
+  const targetTime = new Date(nextDeadline.value.deadline).getTime()
+  return rounds.value
+    .filter((r) => r.deadline && new Date(r.deadline).getTime() === targetTime)
+    .sort((a, b) => a.nr - b.nr)
 })
 
 const countdown = computed(() => {
@@ -121,8 +145,31 @@ function roundRoute(r) {
     <div v-if="loading" class="muted">Laden…</div>
 
     <template v-else>
+      <!-- Mijn stand-samenvatting -->
+      <div v-if="myStanding && myStanding.rank" class="standing-summary">
+        <div class="ss-rank">
+          <span class="ss-label">Plek</span>
+          <span class="ss-rank-num mono">{{ myStanding.rank }}</span>
+          <span class="ss-of">van {{ myStanding.totalMembers }}</span>
+        </div>
+        <div class="ss-divider"></div>
+        <div class="ss-points">
+          <span class="ss-label">Puntentotaal</span>
+          <span class="ss-points-num mono">{{ myStanding.totalPoints }}</span>
+        </div>
+        <router-link to="/stand" class="ss-link">Volledige stand →</router-link>
+      </div>
+
+      <!-- Aftelklok met alle drie de rondes die op dezelfde deadline sluiten -->
       <div v-if="countdown" class="countdown-card">
-        <div class="countdown-label">Volgende deadline — <strong>{{ nextDeadline.name }}</strong></div>
+        <div class="countdown-header">
+          <div class="countdown-label">Eerstvolgende deadline</div>
+          <div class="countdown-deadlines">
+            <span v-for="r in upcomingDeadlines" :key="r.nr" class="deadline-pill mono">
+              R{{ r.nr }} {{ r.name }}
+            </span>
+          </div>
+        </div>
         <div class="countdown-clock mono">
           <div class="clock-cell">
             <span class="num">{{ countdown.days }}</span>
@@ -140,6 +187,10 @@ function roundRoute(r) {
             <span class="num">{{ String(countdown.seconds).padStart(2, '0') }}</span>
             <span class="unit">s</span>
           </div>
+        </div>
+        <div v-if="upcomingDeadlines.length > 1" class="countdown-note">
+          {{ upcomingDeadlines.length }} rondes sluiten tegelijk op
+          {{ new Date(nextDeadline.deadline).toLocaleString('nl-NL', { weekday: 'long', day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' }) }}
         </div>
       </div>
 
@@ -186,6 +237,56 @@ function roundRoute(r) {
 </template>
 
 <style scoped>
+/* Stand-samenvatting bovenaan */
+.standing-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  padding: var(--s-4) var(--s-5);
+  background: linear-gradient(135deg, var(--gold-soft), var(--gold));
+  border-radius: var(--r-md);
+  margin-bottom: var(--s-4);
+  box-shadow: 0 3px 12px rgba(212, 160, 23, 0.18);
+  color: var(--ink);
+}
+.ss-rank, .ss-points {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ss-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.ss-rank-num, .ss-points-num {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.ss-of {
+  font-size: 0.8125rem;
+  opacity: 0.7;
+}
+.ss-divider {
+  width: 1px;
+  height: 40px;
+  background: rgba(30, 42, 30, 0.15);
+}
+.ss-link {
+  margin-left: auto;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+.ss-link:hover { opacity: 1; text-decoration: none; }
+
+/* Countdown card met meerdere ronde-pills */
 .countdown-card {
   background: linear-gradient(135deg, var(--field), var(--field-soft));
   color: var(--bg-card);
@@ -194,8 +295,34 @@ function roundRoute(r) {
   margin-bottom: var(--s-5);
   box-shadow: 0 6px 24px rgba(31, 75, 58, 0.18);
 }
-.countdown-label { font-size: 0.875rem; opacity: 0.85; margin-bottom: var(--s-3); letter-spacing: 0.02em; }
-.countdown-label strong { font-weight: 600; }
+.countdown-header { margin-bottom: var(--s-4); }
+.countdown-label {
+  font-size: 0.875rem;
+  opacity: 0.85;
+  margin-bottom: var(--s-3);
+  letter-spacing: 0.02em;
+}
+.countdown-deadlines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.deadline-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.18);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.countdown-note {
+  font-size: 0.8125rem;
+  opacity: 0.8;
+  margin-top: var(--s-3);
+  font-style: italic;
+}
 .countdown-clock { display: flex; gap: var(--s-4); }
 .clock-cell { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
 .clock-cell .num {

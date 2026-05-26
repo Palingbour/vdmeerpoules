@@ -54,7 +54,14 @@ onUnmounted(() => {
   <nav class="navbar">
     <div class="navbar-inner">
       <router-link to="/" class="brand">
-        <span class="brand-mark"></span>Van der Meer Poules
+        <svg class="trophy-mark" viewBox="0 0 24 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <!-- Trofee/cup met handvatten -->
+          <path d="M6 3h12v2.5c0 .8.6 1.5 1.4 1.5H21c1.1 0 2 .9 2 2v2c0 2.5-2 4.5-4.5 4.5h-.7c-.6 1.7-2 3-3.8 3.4V21h2c.6 0 1 .4 1 1s-.4 1-1 1H8c-.6 0-1-.4-1-1s.4-1 1-1h2v-2.1c-1.8-.4-3.2-1.7-3.8-3.4h-.7C3 15.5 1 13.5 1 11V9c0-1.1.9-2 2-2h1.6c.8 0 1.4-.7 1.4-1.5V3z" fill="currentColor"/>
+          <path d="M5 9v2c0 1.4 1.1 2.5 2.5 2.5H8V9H5zm14 0h-3v4.5h.5c1.4 0 2.5-1.1 2.5-2.5V9z" fill="var(--bg-card)" fill-opacity="0.95"/>
+          <!-- Ster op de cup -->
+          <path d="M12 6.5l.8 1.7 1.9.2-1.4 1.3.4 1.8L12 10.6 10.3 11.5l.4-1.8L9.3 8.4l1.9-.2z" fill="var(--bg-card)" fill-opacity="0.9"/>
+        </svg>
+        <span>Van der Meer WK poule 2026</span>
       </router-link>
       <div class="nav-links">
         <router-link to="/">Overzicht</router-link>

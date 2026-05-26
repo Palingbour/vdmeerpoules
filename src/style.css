@@ -2,19 +2,21 @@
    Design tokens
    ============================================================ */
 :root {
-  /* Colour palette — warm editorial */
-  --bg:          #f7f1e3;
+  /* Colour palette — WK 2026 warm sfeervol */
+  --bg:          #fdf2e0;
   --bg-card:    #fffaee;
-  --bg-elev:    #f0e8d1;
+  --bg-elev:    #f7e9c8;
   --ink:         #1e2a1e;
   --ink-soft:    #4a5544;
   --ink-mute:    #8a8472;
-  --line:        #d9cfb2;
-  --line-soft:  #e8dfc4;
+  --line:        #e6d5a8;
+  --line-soft:  #f0e3c0;
   --field:       #1f4b3a;
   --field-soft: #2c6a52;
   --accent:      #d4561d;
   --accent-soft: #e88a4a;
+  --gold:        #d4a017;
+  --gold-soft:   #f0c84a;
   --warn:        #b8860b;
   --ok:          #5a7d3a;
   --err:         #a83232;
@@ -51,6 +53,12 @@ body {
   line-height: 1.55;
   color: var(--ink);
   background: var(--bg);
+  background-image:
+    radial-gradient(circle at 8% 20%, rgba(212, 86, 29, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 92% 80%, rgba(212, 160, 23, 0.06) 0%, transparent 50%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80' fill='none'><circle cx='40' cy='40' r='12' fill='none' stroke='%231e2a1e' stroke-opacity='0.04' stroke-width='1'/><polygon points='40,30 47,35 44,43 36,43 33,35' fill='%231e2a1e' fill-opacity='0.03'/></svg>");
+  background-attachment: fixed;
+  background-size: auto, auto, 200px 200px;
   -webkit-font-smoothing: antialiased;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -279,11 +287,22 @@ h3 { font-size: 1.25rem; line-height: 1.25; }
 .brand {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   color: var(--ink);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
 }
 .brand:hover { text-decoration: none; }
+.trophy-mark {
+  display: inline-block;
+  width: 26px;
+  height: 30px;
+  color: var(--gold);
+  filter: drop-shadow(0 1px 2px rgba(212, 160, 23, 0.3));
+  flex-shrink: 0;
+}
 .brand-mark {
   display: inline-block;
   width: 10px;
