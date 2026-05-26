@@ -6,7 +6,7 @@ import { useRouter } from 'vue-router'
 const auth = useAuthStore()
 const router = useRouter()
 
-const mode = ref('login') // 'login' or 'signup'
+const mode = ref('login') // 'login' | 'signup' | 'check-email'
 const email = ref('')
 const password = ref('')
 const fullName = ref('')
@@ -27,11 +27,14 @@ async function handleSubmit() {
   try {
     if (mode.value === 'signup') {
       await auth.signUp(email.value.trim(), password.value, fullName.value.trim())
+      // Altijd naar check-email screen tonen. Email confirmation staat aan in
+      // Supabase, dus de gebruiker MOET sowieso eerst klikken op de
+      // bevestigingslink — ongeacht of we hier een session krijgen of niet.
+      mode.value = 'check-email'
     } else {
       await auth.signInWithPassword(email.value.trim(), password.value)
+      router.push(auth.isActive ? '/' : '/wachten')
     }
-    // Doorverwijzen: dashboard als active, anders wachtkamer
-    router.push(auth.isActive ? '/' : '/wachten')
   } catch (e) {
     error.value = humanizeError(e.message)
   } finally {
@@ -41,11 +44,18 @@ async function handleSubmit() {
 
 function humanizeError(msg) {
   if (!msg) return 'Er ging iets mis. Probeer het opnieuw.'
-  if (msg.includes('Invalid login credentials')) return 'E-mail of wachtwoord klopt niet.'
+  if (msg.includes('Invalid login credentials')) return 'E-mail of wachtwoord klopt niet — óf je e-mail is nog niet bevestigd via de mail die je hebt gekregen.'
   if (msg.includes('User already registered')) return 'Dit e-mailadres heeft al een account. Klik op "Inloggen".'
   if (msg.includes('Password should be')) return 'Wachtwoord moet minimaal 6 tekens zijn.'
-  if (msg.includes('Email not confirmed')) return 'Je e-mail is nog niet bevestigd.'
+  if (msg.includes('Email not confirmed')) return 'Je moet eerst je e-mail bevestigen via de mail die je hebt gekregen.'
+  if (msg.includes('rate limit')) return 'Te veel pogingen. Wacht een minuutje en probeer opnieuw.'
   return msg
+}
+
+function backToLogin() {
+  mode.value = 'login'
+  password.value = ''
+  error.value = ''
 }
 </script>
 
@@ -60,7 +70,21 @@ function humanizeError(msg) {
       </p>
     </div>
 
-    <div class="card">
+    <!-- Check-mail scherm na signup -->
+    <div class="card" v-if="mode === 'check-email'">
+      <h3>Check je mail 📬</h3>
+      <p>
+        We hebben een bevestigings-mail gestuurd naar <strong>{{ email }}</strong>.
+        Klik op de link in die mail om je account te activeren.
+      </p>
+      <p class="muted" style="margin-top: var(--s-4)">
+        Geen mail ontvangen? Kijk in je spamfolder. Of
+        <a href="#" @click.prevent="backToLogin">probeer opnieuw aan te melden</a>.
+      </p>
+    </div>
+
+    <!-- Login + signup formulier -->
+    <div class="card" v-else>
       <div class="row-between" style="margin-bottom: var(--s-5)">
         <button
           type="button"
@@ -112,7 +136,7 @@ function humanizeError(msg) {
             required
           />
           <span v-if="mode === 'signup'" class="hint">
-            Kies iets dat je makkelijk onthoudt. Vergeten kan altijd hersteld worden door de beheerder.
+            Kies iets dat je makkelijk onthoudt.
           </span>
         </div>
 

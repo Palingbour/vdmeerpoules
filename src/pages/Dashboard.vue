@@ -29,27 +29,48 @@ onUnmounted(() => {
 async function load() {
   loading.value = true
 
-  const [roundsRes, matchPred, groupPred, bonusPred, totalM, totalG, totalB, annRes] = await Promise.all([
-    supabase.from('rounds').select('*').order('nr'),
-    supabase.from('match_predictions').select('match_id', { count: 'exact', head: true }).eq('user_id', auth.profile.id),
-    supabase.from('group_predictions').select('group_letter', { count: 'exact', head: true }).eq('user_id', auth.profile.id),
-    supabase.from('bonus_predictions').select('question_id', { count: 'exact', head: true }).eq('user_id', auth.profile.id),
-    supabase.from('matches').select('id', { count: 'exact', head: true }).eq('round_nr', 1),
-    supabase.from('groups').select('letter', { count: 'exact', head: true }),
-    supabase.from('bonus_questions').select('id', { count: 'exact', head: true }),
-    supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(3)
-  ])
+  try {
+    if (!auth.profile?.id) {
+      console.warn('Dashboard: auth.profile not yet loaded, skipping queries')
+      return
+    }
 
-  rounds.value = roundsRes.data || []
-  matchPredCount.value = matchPred.count || 0
-  groupPredCount.value = groupPred.count || 0
-  bonusPredCount.value = bonusPred.count || 0
-  totalMatches.value = totalM.count || 0
-  totalGroups.value = totalG.count || 0
-  totalBonus.value = totalB.count || 0
-  announcements.value = annRes.data || []
+    // Promise.allSettled zodat één gefaalde query niet alles blokkeert.
+    const results = await Promise.allSettled([
+      supabase.from('rounds').select('*').order('nr'),
+      supabase.from('match_predictions').select('match_id', { count: 'exact', head: true }).eq('user_id', auth.profile.id),
+      supabase.from('group_predictions').select('group_letter', { count: 'exact', head: true }).eq('user_id', auth.profile.id),
+      supabase.from('bonus_predictions').select('question_id', { count: 'exact', head: true }).eq('user_id', auth.profile.id),
+      supabase.from('matches').select('id', { count: 'exact', head: true }).eq('round_nr', 1),
+      supabase.from('groups').select('letter', { count: 'exact', head: true }),
+      supabase.from('bonus_questions').select('id', { count: 'exact', head: true }),
+      supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(3)
+    ])
 
-  loading.value = false
+    const labels = ['rounds', 'match_predictions', 'group_predictions', 'bonus_predictions', 'matches', 'groups', 'bonus_questions', 'announcements']
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        console.error(`[Dashboard] Query ${labels[i]} faalde:`, r.reason)
+      } else if (r.value?.error) {
+        console.error(`[Dashboard] Query ${labels[i]} gaf error:`, r.value.error)
+      }
+    })
+
+    const get = (idx) => results[idx].status === 'fulfilled' ? results[idx].value : { data: null, count: null }
+
+    rounds.value = get(0).data || []
+    matchPredCount.value = get(1).count || 0
+    groupPredCount.value = get(2).count || 0
+    bonusPredCount.value = get(3).count || 0
+    totalMatches.value = get(4).count || 0
+    totalGroups.value = get(5).count || 0
+    totalBonus.value = get(6).count || 0
+    announcements.value = get(7).data || []
+  } catch (e) {
+    console.error('[Dashboard] Algemene fout in load():', e)
+  } finally {
+    loading.value = false
+  }
 }
 
 const nextDeadline = computed(() => {
