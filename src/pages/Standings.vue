@@ -123,10 +123,14 @@ function sharedRank(idx) {
           <tr>
             <th class="col-rank">#</th>
             <th class="col-name">Deelnemer</th>
-            <th class="col-r col-r1" title="Poulewedstrijden (max 360)">R1</th>
-            <th class="col-r col-r2" title="Eindklasseringen (max 48)">R2</th>
-            <th class="col-r col-r8" title="Bonusvragen">R8</th>
-            <th class="col-exact" title="Aantal exacte uitslagen">Exact</th>
+            <th class="col-r" title="Poulewedstrijden">R1</th>
+            <th class="col-r" title="Eindklasseringen">R2</th>
+            <th class="col-r" title="Achtste finales">R3</th>
+            <th class="col-r" title="Kwartfinales">R4</th>
+            <th class="col-r" title="Halve finales">R5</th>
+            <th class="col-r" title="Troostfinale">R6</th>
+            <th class="col-r" title="Finale">R7</th>
+            <th class="col-r" title="Bonusvragen">R8</th>
             <th class="col-total">Totaal</th>
           </tr>
         </thead>
@@ -146,10 +150,14 @@ function sharedRank(idx) {
               <strong>{{ row.full_name }}</strong>
               <span v-if="row.role === 'admin'" class="admin-tag mono">admin</span>
             </td>
-            <td class="col-r col-r1 mono">{{ row.r1_points }}</td>
-            <td class="col-r col-r2 mono">{{ row.r2_points }}</td>
-            <td class="col-r col-r8 mono">{{ row.r8_points }}</td>
-            <td class="col-exact mono">{{ row.exact_count }}</td>
+            <td class="col-r mono" :class="{ zero: row.r1_points === 0 }">{{ row.r1_points }}</td>
+            <td class="col-r mono" :class="{ zero: row.r2_points === 0 }">{{ row.r2_points }}</td>
+            <td class="col-r mono" :class="{ zero: row.r3_points === 0 }">{{ row.r3_points }}</td>
+            <td class="col-r mono" :class="{ zero: row.r4_points === 0 }">{{ row.r4_points }}</td>
+            <td class="col-r mono" :class="{ zero: row.r5_points === 0 }">{{ row.r5_points }}</td>
+            <td class="col-r mono" :class="{ zero: row.r6_points === 0 }">{{ row.r6_points }}</td>
+            <td class="col-r mono" :class="{ zero: row.r7_points === 0 }">{{ row.r7_points }}</td>
+            <td class="col-r mono" :class="{ zero: row.r8_points === 0 }">{{ row.r8_points }}</td>
             <td class="col-total mono"><strong>{{ row.total_points }}</strong></td>
           </tr>
         </tbody>
@@ -249,7 +257,7 @@ function sharedRank(idx) {
   font-weight: 500;
 }
 .col-rank {
-  width: 60px;
+  width: 56px;
   text-align: center;
 }
 .rank-num {
@@ -261,16 +269,20 @@ function sharedRank(idx) {
   display: inline-block;
   margin-left: 4px;
 }
-.col-r, .col-exact, .col-total {
+.col-r, .col-total {
   text-align: right;
-  width: 60px;
+  width: 50px;
+  padding-left: var(--s-2);
+  padding-right: var(--s-2);
 }
 .col-total {
-  width: 80px;
+  width: 70px;
+  padding-right: var(--s-4);
 }
-.col-r1 { color: var(--ink); }
-.col-r2 { color: var(--ink-soft); }
-.col-r8 { color: var(--ink-soft); }
+.col-r.zero {
+  color: var(--ink-mute);
+  opacity: 0.45;
+}
 .admin-tag {
   display: inline-block;
   margin-left: 6px;
@@ -291,11 +303,14 @@ function sharedRank(idx) {
   border-top: 1px solid var(--line);
 }
 
-@media (max-width: 720px) {
-  .lb-table .col-exact { display: none; }
+/* Horizontale scroll op smalle schermen ipv kolommen verbergen */
+.leaderboard {
+  overflow-x: auto;
+}
+.lb-table {
+  min-width: 720px;
 }
 @media (max-width: 540px) {
-  .lb-table .col-r2, .lb-table .col-r8 { display: none; }
   .my-rank-card { flex-direction: column; align-items: flex-start; gap: var(--s-3); }
   .my-points { text-align: left; }
 }
