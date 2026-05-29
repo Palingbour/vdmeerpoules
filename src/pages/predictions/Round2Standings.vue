@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { supabase } from '../../lib/supabase.js'
 import { useAuthStore } from '../../stores/auth.js'
 
@@ -10,11 +10,15 @@ const teamsByGroup = ref({})
 const orders = ref({})              // group_letter -> array of team_ids in order 1-4
 const savedStatus = ref({})         // group_letter -> 'ok'|'saving'|'error'|null
 const groupResults = ref({})        // group_letter -> {pos1,pos2,pos3,pos4} actual ranking
-const groupPoints = ref({})         // group_letter -> points_awarded
+const groupPoints = ref({})         // group_letter -> definitieve points_awarded
+const liveRankings = ref({})        // group_letter -> [team_id, team_id, team_id, team_id] = actuele positie 1-4
+const liveStats = ref({})           // group_letter -> { matches_played }
+const livePoints = ref({})          // group_letter -> live punten (voorspelling vs huidige stand)
 const loading = ref(true)
 const error = ref('')
 const draggingFrom = ref(null)
 const saveTimers = {}
+let channel = null
 
 const deadlinePassed = computed(() => {
   if (!round.value?.deadline) return false
@@ -27,18 +31,24 @@ const filledCount = computed(() => {
   ).length
 })
 
+const totalLivePoints = computed(() => {
+  return Object.values(livePoints.value).reduce((sum, n) => sum + (n || 0), 0)
+})
+
 async function load() {
   loading.value = true
   error.value = ''
 
-  const [roundRes, teamsRes, predsRes, resultsRes] = await Promise.all([
+  const [roundRes, teamsRes, predsRes, resultsRes, liveRankRes, liveScoreRes] = await Promise.all([
     supabase.from('rounds').select('*').eq('nr', 2).single(),
     supabase.from('teams').select('*').order('group_letter').order('name'),
     supabase
       .from('group_predictions')
       .select('*')
       .eq('user_id', auth.profile.id),
-    supabase.from('group_results').select('*')
+    supabase.from('group_results').select('*'),
+    supabase.from('live_group_rankings').select('*').order('group_letter').order('position'),
+    supabase.from('live_r2_scoring').select('*').eq('user_id', auth.profile.id)
   ])
 
   if (roundRes.error) error.value = roundRes.error.message
@@ -78,10 +88,45 @@ async function load() {
   }
   groupResults.value = resMap
 
+  // Live ranking per poule: positie 1-4 op basis van actuele R1 uitslagen
+  const liveRankMap = {}
+  const liveStatsMap = {}
+  for (const row of liveRankRes.data || []) {
+    if (!liveRankMap[row.group_letter]) liveRankMap[row.group_letter] = [null, null, null, null]
+    liveRankMap[row.group_letter][row.position - 1] = row.team_id
+    liveStatsMap[row.group_letter] = { matchesPlayed: row.played }
+  }
+  liveRankings.value = liveRankMap
+  liveStats.value = liveStatsMap
+
+  // Live punten van mijn R2 voorspelling tegen huidige stand
+  const liveScoreMap = {}
+  for (const row of liveScoreRes.data || []) {
+    liveScoreMap[row.group_letter] = row.live_points
+  }
+  livePoints.value = liveScoreMap
+
   loading.value = false
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  // Realtime: ververs zodra een wedstrijd of voorspelling wijzigt
+  channel = supabase
+    .channel('r2-live-watch')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => load())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'group_results' }, () => load())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'group_predictions' }, (payload) => {
+      if (payload.new?.user_id === auth.profile?.id || payload.old?.user_id === auth.profile?.id) {
+        load()
+      }
+    })
+    .subscribe()
+})
+
+onUnmounted(() => {
+  if (channel) supabase.removeChannel(channel)
+})
 
 function getTeam(letter, idx) {
   const teamId = orders.value[letter]?.[idx]
@@ -186,6 +231,25 @@ function hasResultFor(letter) {
   return !!groupResults.value[letter]
 }
 
+// Live status: of mijn voorspelde team op positie idx OOK op die positie staat
+// in de actuele tussenstand. Alleen relevant als poule nog niet definitief is.
+function isLivePositionCorrect(letter, idx) {
+  if (hasResultFor(letter)) return null  // definitieve uitslag heeft voorrang
+  const live = liveRankings.value[letter]
+  if (!live) return null
+  const predTeam = orders.value[letter]?.[idx]
+  if (!predTeam || !live[idx]) return null
+  return predTeam === live[idx]
+}
+
+function liveMatchesPlayed(letter) {
+  return liveStats.value[letter]?.matchesPlayed || 0
+}
+
+function liveScoreFor(letter) {
+  return livePoints.value[letter] ?? 0
+}
+
 function getCardClass(letter) {
   if (!hasResultFor(letter)) return ''
   const pts = groupPoints.value[letter] || 0
@@ -213,6 +277,11 @@ function getCardClass(letter) {
         Sleep landen in de juiste eindvolgorde, of gebruik de pijltjes. Per goed
         land op de juiste positie = 1 punt. Automatisch opgeslagen.
       </p>
+      <div v-if="totalLivePoints > 0" class="live-total">
+        <span class="live-dot"></span>
+        Op basis van huidige tussenstand sta je nu op <strong>{{ totalLivePoints }} punten</strong> voor R2.
+        Dit kan nog veranderen tot alle 72 poulewedstrijden gespeeld zijn.
+      </div>
     </div>
 
     <div v-if="deadlinePassed" class="alert alert-warn">
@@ -229,6 +298,10 @@ function getCardClass(letter) {
           <h3 style="margin: 0">Poule {{ letter }}</h3>
           <span v-if="hasResultFor(letter)" class="points-badge" :class="`points-r2-${groupPoints[letter] || 0}`">
             {{ groupPoints[letter] > 0 ? '+' : '' }}{{ groupPoints[letter] || 0 }} pt
+          </span>
+          <span v-else-if="liveMatchesPlayed(letter) > 0" class="live-badge" :title="`Tussenstand na ${liveMatchesPlayed(letter)} wedstrijden`">
+            <span class="live-dot"></span>
+            {{ liveScoreFor(letter) }} pt live
           </span>
           <span v-else class="save-pill" :class="`save-${savedStatus[letter] || 'none'}`">
             {{ {
@@ -247,7 +320,9 @@ function getCardClass(letter) {
             class="standing-row"
             :class="{
               'pos-correct': isPositionCorrect(letter, idx) === true,
-              'pos-wrong':   isPositionCorrect(letter, idx) === false
+              'pos-wrong':   isPositionCorrect(letter, idx) === false,
+              'pos-live-correct': isLivePositionCorrect(letter, idx) === true,
+              'pos-live-wrong':   isLivePositionCorrect(letter, idx) === false
             }"
             :draggable="!deadlinePassed && !hasResultFor(letter)"
             @dragstart="onDragStart(letter, idx, $event)"
@@ -302,6 +377,50 @@ function getCardClass(letter) {
 .group-card.scored-r2-2 { border-left-color: #c8541d; background: linear-gradient(to right, rgba(200, 84, 29, 0.05), var(--bg-card) 30%); }
 .group-card.scored-r2-1 { border-left-color: #d99358; }
 .group-card.scored-r2-0 { border-left-color: #b8b8b8; }
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+  background: rgba(31, 75, 58, 0.1);
+  color: var(--field);
+  border: 1px solid rgba(31, 75, 58, 0.2);
+}
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2d8045;
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+.live-total {
+  margin-top: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  background: rgba(31, 75, 58, 0.06);
+  border-left: 3px solid var(--field);
+  border-radius: var(--r-sm);
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.standing-row.pos-live-correct {
+  background: rgba(45, 128, 69, 0.07);
+  border-color: rgba(45, 128, 69, 0.2);
+}
+.standing-row.pos-live-wrong {
+  background: rgba(200, 84, 29, 0.04);
+}
 .points-badge {
   padding: 3px 10px;
   border-radius: 999px;

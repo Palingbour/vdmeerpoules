@@ -85,25 +85,27 @@ async function load() {
 
     // KO progress per ronde 3-7
     const koResults = await Promise.allSettled([
-      supabase.from('matches').select('round_nr, id'),
+      supabase.from('matches').select('round_nr, id, slot_home_type, slot_away_type'),
       supabase.from('match_predictions').select('match_id, pred_team_home_id, pred_team_away_id, score_home, score_away').eq('user_id', auth.profile.id)
     ])
     if (koResults[0].status === 'fulfilled' && koResults[1].status === 'fulfilled') {
       const allMatches = koResults[0].value.data || []
       const allPreds = koResults[1].value.data || []
       const matchesByRound = {}
-      const matchIdToRound = {}
+      const matchesById = {}
       for (const m of allMatches) {
         matchesByRound[m.round_nr] = (matchesByRound[m.round_nr] || 0) + 1
-        matchIdToRound[m.id] = m.round_nr
+        matchesById[m.id] = m
       }
       const predsByRound = {}
       for (const p of allPreds) {
-        const r = matchIdToRound[p.match_id]
-        if (!r || r < 3 || r > 7) continue
-        // Een KO-voorspelling telt pas als 'gevuld' als alle 4 velden gevuld zijn
-        if (p.pred_team_home_id && p.pred_team_away_id && p.score_home != null && p.score_away != null) {
-          predsByRound[r] = (predsByRound[r] || 0) + 1
+        const m = matchesById[p.match_id]
+        if (!m || m.round_nr < 3 || m.round_nr > 7) continue
+        // Bonus slots tellen automatisch als 'goed' — geen team-voorspelling nodig daar
+        const homeOK = m.slot_home_type === 'third_place' || !!p.pred_team_home_id
+        const awayOK = m.slot_away_type === 'third_place' || !!p.pred_team_away_id
+        if (homeOK && awayOK && p.score_home != null && p.score_away != null) {
+          predsByRound[m.round_nr] = (predsByRound[m.round_nr] || 0) + 1
         }
       }
       koMatchCounts.value = matchesByRound
