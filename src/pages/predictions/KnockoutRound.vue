@@ -15,6 +15,7 @@ const route = useRoute()
 const round = ref(null)
 const matches = ref([])
 const teams = ref([])
+const allPriorMatches = ref([])     // alle matches uit eerdere rondes, voor dep-lookups
 const predictions = ref({})       // match_id -> { pred_home, pred_away, score_home, score_away, saved, points_awarded }
 const loading = ref(true)
 const error = ref('')
@@ -28,8 +29,18 @@ const deadlinePassed = computed(() => {
 const filledCount = computed(() => {
   return matches.value.filter((m) => {
     const p = predictions.value[m.id]
-    return p && p.pred_home && p.pred_away && p.score_home !== '' && p.score_away !== ''
+    if (!p) return false
+    const homeOK = isSlotBonus(m.slot_home_type) || p.pred_home
+    const awayOK = isSlotBonus(m.slot_away_type) || p.pred_away
+    return homeOK && awayOK && p.score_home !== '' && p.score_away !== ''
   }).length
+})
+
+const blockedCount = computed(() => {
+  return matches.value.filter((m) =>
+    isSlotBlocked(m.slot_home_type, m.slot_home_match_dep) ||
+    isSlotBlocked(m.slot_away_type, m.slot_away_match_dep)
+  ).length
 })
 
 async function load() {
@@ -37,15 +48,15 @@ async function load() {
   error.value = ''
 
   try {
-    const [roundRes, matchesRes, teamsRes, predsRes] = await Promise.all([
+    const [roundRes, matchesRes, allMatchesRes, teamsRes, predsRes] = await Promise.all([
       supabase.from('rounds').select('*').eq('nr', props.roundNr).single(),
       supabase
         .from('matches')
         .select(`
           id, match_number, kickoff_at, city, stadium,
           team_home_placeholder, team_away_placeholder,
-          slot_home_type, slot_home_groups,
-          slot_away_type, slot_away_groups,
+          slot_home_type, slot_home_groups, slot_home_match_dep,
+          slot_away_type, slot_away_groups, slot_away_match_dep,
           team_home_id, team_away_id,
           score_home, score_away, status,
           team_home:teams!matches_team_home_id_fkey(id, name, code, group_letter, flag_url),
@@ -54,6 +65,11 @@ async function load() {
         .eq('round_nr', props.roundNr)
         .order('kickoff_at')
         .order('match_number'),
+      // Alle matches uit prior rondes voor dep-lookups
+      supabase
+        .from('matches')
+        .select('id, match_number, team_home_id, team_away_id, status, score_home, score_away')
+        .lt('round_nr', props.roundNr),
       supabase.from('teams').select('*').order('group_letter').order('name'),
       supabase
         .from('match_predictions')
@@ -69,6 +85,7 @@ async function load() {
     round.value = roundRes.data
     matches.value = matchesRes.data || []
     teams.value = teamsRes.data || []
+    allPriorMatches.value = allMatchesRes.data || []
 
     const map = {}
     for (const m of matches.value) {
@@ -107,13 +124,43 @@ watch(() => props.roundNr, load)
 
 onMounted(load)
 
-function getOptions(slotType, slotGroups) {
-  // Voor groep-positie slots: filter op poule
+function getOptions(slotType, slotGroups, slotMatchDep) {
+  // Bonus: geen dropdown, slot wordt anders gerenderd
+  if (slotType === 'third_place') return []
+
+  // Match dependency: 2 opties uit voorgaande wedstrijd
+  if ((slotType === 'match_winner' || slotType === 'match_loser') && slotMatchDep) {
+    const depMatch = allPriorMatches.value.find(m => m.id === slotMatchDep)
+    if (!depMatch || !depMatch.team_home_id || !depMatch.team_away_id) return []
+    return teams.value.filter(t =>
+      t.id === depMatch.team_home_id || t.id === depMatch.team_away_id
+    )
+  }
+
+  // Group winner/runner: filter op poule
   if ((slotType === 'group_winner' || slotType === 'group_runner') && slotGroups?.length) {
     return teams.value.filter((t) => slotGroups.includes(t.group_letter))
   }
-  // third_place / open: alle 48 teams
+
+  // Fallback (oude 'open' types die we niet meer gebruiken): alle teams
   return teams.value
+}
+
+function getDepMatchNumber(slotMatchDep) {
+  if (!slotMatchDep) return null
+  const depMatch = allPriorMatches.value.find(m => m.id === slotMatchDep)
+  return depMatch?.match_number || null
+}
+
+function isSlotBlocked(slotType, slotMatchDep) {
+  if (slotType !== 'match_winner' && slotType !== 'match_loser') return false
+  if (!slotMatchDep) return true
+  const depMatch = allPriorMatches.value.find(m => m.id === slotMatchDep)
+  return !depMatch || !depMatch.team_home_id || !depMatch.team_away_id
+}
+
+function isSlotBonus(slotType) {
+  return slotType === 'third_place'
 }
 
 function fmtDate(d) {
@@ -138,9 +185,22 @@ function fmtDeadline(d) {
 }
 
 function onChange(matchId) {
+  const m = matches.value.find(x => x.id === matchId)
   const p = predictions.value[matchId]
-  // Alleen opslaan als alles ingevuld is
-  if (!p.pred_home || !p.pred_away || p.score_home === '' || p.score_away === '') {
+  if (!m || !p) return
+
+  // Bonus slots vereisen géén team-voorspelling
+  const homeOK = isSlotBonus(m.slot_home_type) || p.pred_home
+  const awayOK = isSlotBonus(m.slot_away_type) || p.pred_away
+
+  // Geblokkeerde slots kunnen niet ingevuld worden — sla niet op
+  if (isSlotBlocked(m.slot_home_type, m.slot_home_match_dep) ||
+      isSlotBlocked(m.slot_away_type, m.slot_away_match_dep)) {
+    p.saved = null
+    return
+  }
+
+  if (!homeOK || !awayOK || p.score_home === '' || p.score_away === '') {
     p.saved = null
     return
   }
@@ -190,6 +250,7 @@ function getScoreClass(m) {
         <div>
           <strong>{{ filledCount }} / {{ matches.length }}</strong>
           <span class="muted"> ingevuld</span>
+          <span v-if="blockedCount > 0" class="muted"> · {{ blockedCount }} wachten op eerdere uitslagen</span>
         </div>
         <div class="muted">
           Deadline: <span class="mono">{{ fmtDeadline(round?.deadline) }}</span>
@@ -241,7 +302,20 @@ function getScoreClass(m) {
           <!-- HOME slot -->
           <div class="slot">
             <div class="slot-label mono">{{ m.team_home_placeholder }}</div>
+
+            <!-- Bonus slot: 🎁 cadeau -->
+            <div v-if="isSlotBonus(m.slot_home_type)" class="bonus-tile">
+              🎁 Bonus — automatisch goed
+            </div>
+
+            <!-- Geblokkeerd: wacht op vorige wedstrijd -->
+            <div v-else-if="isSlotBlocked(m.slot_home_type, m.slot_home_match_dep)" class="blocked-tile">
+              ⏳ Wacht op uitslag wedstrijd #{{ getDepMatchNumber(m.slot_home_match_dep) }}
+            </div>
+
+            <!-- Normaal: dropdown -->
             <select
+              v-else
               v-model="predictions[m.id].pred_home"
               @change="onChange(m.id)"
               :disabled="deadlinePassed"
@@ -249,7 +323,7 @@ function getScoreClass(m) {
             >
               <option :value="null">— kies land —</option>
               <option
-                v-for="t in getOptions(m.slot_home_type, m.slot_home_groups)"
+                v-for="t in getOptions(m.slot_home_type, m.slot_home_groups, m.slot_home_match_dep)"
                 :key="t.id"
                 :value="t.id"
               >
@@ -266,7 +340,7 @@ function getScoreClass(m) {
               max="20"
               v-model="predictions[m.id].score_home"
               @input="onChange(m.id)"
-              :disabled="deadlinePassed"
+              :disabled="deadlinePassed || isSlotBlocked(m.slot_home_type, m.slot_home_match_dep) || isSlotBlocked(m.slot_away_type, m.slot_away_match_dep)"
               class="score-box"
               inputmode="numeric"
               placeholder="?"
@@ -278,7 +352,7 @@ function getScoreClass(m) {
               max="20"
               v-model="predictions[m.id].score_away"
               @input="onChange(m.id)"
-              :disabled="deadlinePassed"
+              :disabled="deadlinePassed || isSlotBlocked(m.slot_home_type, m.slot_home_match_dep) || isSlotBlocked(m.slot_away_type, m.slot_away_match_dep)"
               class="score-box"
               inputmode="numeric"
               placeholder="?"
@@ -288,7 +362,17 @@ function getScoreClass(m) {
           <!-- AWAY slot -->
           <div class="slot slot-away">
             <div class="slot-label mono">{{ m.team_away_placeholder }}</div>
+
+            <div v-if="isSlotBonus(m.slot_away_type)" class="bonus-tile">
+              🎁 Bonus — automatisch goed
+            </div>
+
+            <div v-else-if="isSlotBlocked(m.slot_away_type, m.slot_away_match_dep)" class="blocked-tile">
+              ⏳ Wacht op uitslag wedstrijd #{{ getDepMatchNumber(m.slot_away_match_dep) }}
+            </div>
+
             <select
+              v-else
               v-model="predictions[m.id].pred_away"
               @change="onChange(m.id)"
               :disabled="deadlinePassed"
@@ -296,7 +380,7 @@ function getScoreClass(m) {
             >
               <option :value="null">— kies land —</option>
               <option
-                v-for="t in getOptions(m.slot_away_type, m.slot_away_groups)"
+                v-for="t in getOptions(m.slot_away_type, m.slot_away_groups, m.slot_away_match_dep)"
                 :key="t.id"
                 :value="t.id"
               >
@@ -406,6 +490,27 @@ function getScoreClass(m) {
   box-shadow: 0 0 0 3px rgba(31, 75, 58, 0.12);
 }
 .team-select:disabled { opacity: 0.6; background: var(--bg-elev); }
+
+.bonus-tile {
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: linear-gradient(135deg, rgba(212, 160, 23, 0.15), rgba(212, 160, 23, 0.05));
+  border: 1px dashed #d4a017;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+}
+.blocked-tile {
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--bg-elev);
+  border: 1px dashed var(--line);
+  color: var(--ink-mute);
+  font-size: 0.8125rem;
+  font-style: italic;
+  text-align: center;
+}
 .score-input {
   display: flex;
   align-items: center;
