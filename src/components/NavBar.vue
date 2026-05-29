@@ -1,15 +1,20 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase.js'
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const adminOpen = ref(false)
+const voorspellenOpen = ref(false)
 const dropdownRef = ref(null)
+const voorspellenRef = ref(null)
 const pendingCount = ref(0)
 let channel = null
+
+const isOnPredictRoute = computed(() => route.path.startsWith('/voorspellen'))
 
 async function handleLogout() {
   await auth.signOut()
@@ -28,6 +33,9 @@ async function loadPendingCount() {
 function handleClickOutside(e) {
   if (dropdownRef.value && !dropdownRef.value.contains(e.target)) {
     adminOpen.value = false
+  }
+  if (voorspellenRef.value && !voorspellenRef.value.contains(e.target)) {
+    voorspellenOpen.value = false
   }
 }
 
@@ -66,7 +74,48 @@ onUnmounted(() => {
       <div class="nav-links">
         <router-link to="/">Overzicht</router-link>
         <router-link to="/stand">Stand</router-link>
-        <router-link to="/voorspellen/poules">Voorspellen</router-link>
+
+        <!-- Voorspellen dropdown -->
+        <div class="admin-dropdown" ref="voorspellenRef">
+          <button
+            type="button"
+            class="admin-trigger"
+            :class="{ open: voorspellenOpen, 'is-active-route': isOnPredictRoute }"
+            @click.stop="voorspellenOpen = !voorspellenOpen"
+          >
+            Voorspellen
+            <span class="caret">▾</span>
+          </button>
+          <div v-if="voorspellenOpen" class="dropdown-menu dropdown-menu-wide">
+            <router-link to="/voorspellen/poules" @click="voorspellenOpen = false">
+              <span>R1 Poulewedstrijden</span>
+            </router-link>
+            <router-link to="/voorspellen/eindstanden" @click="voorspellenOpen = false">
+              <span>R2 Eindklasseringen</span>
+            </router-link>
+            <div class="dropdown-divider"></div>
+            <router-link to="/voorspellen/16e-finales" @click="voorspellenOpen = false">
+              <span>R3 16e finales</span>
+            </router-link>
+            <router-link to="/voorspellen/8e-finales" @click="voorspellenOpen = false">
+              <span>R4 8e finales</span>
+            </router-link>
+            <router-link to="/voorspellen/kwartfinales" @click="voorspellenOpen = false">
+              <span>R5 Kwartfinales</span>
+            </router-link>
+            <router-link to="/voorspellen/halve-finales" @click="voorspellenOpen = false">
+              <span>R6 Halve finales</span>
+            </router-link>
+            <router-link to="/voorspellen/finales" @click="voorspellenOpen = false">
+              <span>R7 Troostfinale &amp; Finale</span>
+            </router-link>
+            <div class="dropdown-divider"></div>
+            <router-link to="/voorspellen/bonusvragen" @click="voorspellenOpen = false">
+              <span>R8 Bonusvragen</span>
+            </router-link>
+          </div>
+        </div>
+
         <router-link to="/profiel">Profiel</router-link>
 
         <div v-if="auth.isAdmin" class="admin-dropdown" ref="dropdownRef">
@@ -177,5 +226,17 @@ onUnmounted(() => {
   background: var(--bg-elev);
   color: var(--field);
   font-weight: 600;
+}
+.dropdown-menu-wide {
+  min-width: 250px;
+}
+.dropdown-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 4px 8px;
+}
+.admin-trigger.is-active-route {
+  color: var(--ink);
+  background: var(--bg-elev);
 }
 </style>

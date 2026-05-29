@@ -13,6 +13,8 @@ const bonusPredCount = ref(0)
 const totalMatches = ref(0)
 const totalGroups = ref(0)
 const totalBonus = ref(0)
+const koMatchCounts = ref({})        // round_nr -> total matches in that round
+const koPredCounts = ref({})         // round_nr -> filled predictions for that round
 const myStanding = ref(null)         // { rank, total, totalMembers, totalPoints }
 const loading = ref(true)
 const now = ref(new Date())
@@ -80,6 +82,33 @@ async function load() {
         totalPoints: me?.total_points || 0
       }
     }
+
+    // KO progress per ronde 3-7
+    const koResults = await Promise.allSettled([
+      supabase.from('matches').select('round_nr, id'),
+      supabase.from('match_predictions').select('match_id, pred_team_home_id, pred_team_away_id, score_home, score_away').eq('user_id', auth.profile.id)
+    ])
+    if (koResults[0].status === 'fulfilled' && koResults[1].status === 'fulfilled') {
+      const allMatches = koResults[0].value.data || []
+      const allPreds = koResults[1].value.data || []
+      const matchesByRound = {}
+      const matchIdToRound = {}
+      for (const m of allMatches) {
+        matchesByRound[m.round_nr] = (matchesByRound[m.round_nr] || 0) + 1
+        matchIdToRound[m.id] = m.round_nr
+      }
+      const predsByRound = {}
+      for (const p of allPreds) {
+        const r = matchIdToRound[p.match_id]
+        if (!r || r < 3 || r > 7) continue
+        // Een KO-voorspelling telt pas als 'gevuld' als alle 4 velden gevuld zijn
+        if (p.pred_team_home_id && p.pred_team_away_id && p.score_home != null && p.score_away != null) {
+          predsByRound[r] = (predsByRound[r] || 0) + 1
+        }
+      }
+      koMatchCounts.value = matchesByRound
+      koPredCounts.value = predsByRound
+    }
   } catch (e) {
     console.error('[Dashboard] Algemene fout in load():', e)
   } finally {
@@ -125,6 +154,12 @@ function roundStatus(r) {
 function roundProgress(r) {
   if (r.nr === 1) return { filled: matchPredCount.value, total: totalMatches.value }
   if (r.nr === 2) return { filled: groupPredCount.value, total: totalGroups.value }
+  if (r.nr >= 3 && r.nr <= 7) {
+    return {
+      filled: koPredCounts.value[r.nr] || 0,
+      total: koMatchCounts.value[r.nr] || 0
+    }
+  }
   if (r.nr === 8) return { filled: bonusPredCount.value, total: totalBonus.value }
   return null
 }
@@ -132,6 +167,11 @@ function roundProgress(r) {
 function roundRoute(r) {
   if (r.nr === 1) return '/voorspellen/poules'
   if (r.nr === 2) return '/voorspellen/eindstanden'
+  if (r.nr === 3) return '/voorspellen/16e-finales'
+  if (r.nr === 4) return '/voorspellen/8e-finales'
+  if (r.nr === 5) return '/voorspellen/kwartfinales'
+  if (r.nr === 6) return '/voorspellen/halve-finales'
+  if (r.nr === 7) return '/voorspellen/finales'
   if (r.nr === 8) return '/voorspellen/bonusvragen'
   return null
 }

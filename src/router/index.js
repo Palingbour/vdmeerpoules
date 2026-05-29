@@ -14,6 +14,18 @@ const routes = [
   { path: '/voorspellen/eindstanden', name: 'predict-round2', component: () => import('../pages/predictions/Round2Standings.vue'), meta: { requiresAuth: true, requiresActive: true } },
   { path: '/voorspellen/bonusvragen', name: 'predict-round8', component: () => import('../pages/predictions/Round8Bonus.vue'), meta: { requiresAuth: true, requiresActive: true } },
 
+  // KO-rondes — gebruiken één gedeelde component met props
+  { path: '/voorspellen/16e-finales', name: 'predict-round3', component: () => import('../pages/predictions/KnockoutRound.vue'),
+    props: { roundNr: 3, roundName: '16e finales' }, meta: { requiresAuth: true, requiresActive: true } },
+  { path: '/voorspellen/8e-finales', name: 'predict-round4', component: () => import('../pages/predictions/KnockoutRound.vue'),
+    props: { roundNr: 4, roundName: '8e finales' }, meta: { requiresAuth: true, requiresActive: true } },
+  { path: '/voorspellen/kwartfinales', name: 'predict-round5', component: () => import('../pages/predictions/KnockoutRound.vue'),
+    props: { roundNr: 5, roundName: 'Kwartfinales' }, meta: { requiresAuth: true, requiresActive: true } },
+  { path: '/voorspellen/halve-finales', name: 'predict-round6', component: () => import('../pages/predictions/KnockoutRound.vue'),
+    props: { roundNr: 6, roundName: 'Halve finales' }, meta: { requiresAuth: true, requiresActive: true } },
+  { path: '/voorspellen/finales', name: 'predict-round7', component: () => import('../pages/predictions/KnockoutRound.vue'),
+    props: { roundNr: 7, roundName: 'Troostfinale & Finale' }, meta: { requiresAuth: true, requiresActive: true } },
+
   // Admin
   { path: '/beheer/leden', name: 'admin-members', component: () => import('../pages/admin/Members.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
   { path: '/beheer/wedstrijden', name: 'admin-matches', component: () => import('../pages/admin/Matches.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
