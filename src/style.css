@@ -90,7 +90,13 @@ h3 { font-size: 1.25rem; line-height: 1.25; }
   margin-bottom: var(--s-3);
 }
 
-.mono { font-family: var(--font-mono); }
+.mono {
+  font-family: var(--font-mono);
+  /* 'zero' = sliced zero (streep door de 0) — voorkomt verwarring met 8.
+     'ss01' / 'ss02' zijn alternates die JetBrains Mono óók biedt. */
+  font-feature-settings: "zero" 1, "calt" 1;
+  -webkit-font-feature-settings: "zero" 1, "calt" 1;
+}
 .muted { color: var(--ink-mute); }
 
 /* ============================================================

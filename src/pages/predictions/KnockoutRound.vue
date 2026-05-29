@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { supabase } from '../../lib/supabase.js'
 import { useAuthStore } from '../../stores/auth.js'
 import { useRoute } from 'vue-router'
@@ -20,6 +20,7 @@ const predictions = ref({})       // match_id -> { pred_home, pred_away, score_h
 const loading = ref(true)
 const error = ref('')
 const saveTimers = {}
+let channel = null
 
 const deadlinePassed = computed(() => {
   if (!round.value?.deadline) return false
@@ -122,7 +123,25 @@ async function load() {
 // Reload als roundNr verandert (bv. user navigeert tussen KO rondes)
 watch(() => props.roundNr, load)
 
-onMounted(load)
+onMounted(() => {
+  load()
+  // Realtime: ververs zodra een match of voorspelling verandert
+  // zodat punten direct zichtbaar worden zonder F5
+  channel = supabase
+    .channel(`knockout-watch-r${props.roundNr}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => load())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'match_predictions' }, (payload) => {
+      // Alleen herladen als 't een eigen voorspelling betreft (bespaart calls)
+      if (payload.new?.user_id === auth.profile?.id || payload.old?.user_id === auth.profile?.id) {
+        load()
+      }
+    })
+    .subscribe()
+})
+
+onUnmounted(() => {
+  if (channel) supabase.removeChannel(channel)
+})
 
 function getOptions(slotType, slotGroups, slotMatchDep) {
   // Bonus: geen dropdown, slot wordt anders gerenderd
