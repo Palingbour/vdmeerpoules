@@ -13,8 +13,11 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     user: (s) => s.session?.user ?? null,
     isLoggedIn: (s) => !!s.session,
-    isPending: (s) => s.profile?.status === 'pending',
+    // 'awaiting_payment' wacht op betalingsbevestiging maar mag wel meedoen
+    isAwaitingPayment: (s) => s.profile?.status === 'awaiting_payment',
     isActive: (s) => s.profile?.status === 'active',
+    // 'isParticipant' — kan voorspellen, dashboard zien, etc. — active OF awaiting_payment
+    isParticipant: (s) => s.profile?.status === 'active' || s.profile?.status === 'awaiting_payment',
     isAdmin: (s) => s.profile?.role === 'admin' && s.profile?.status === 'active'
   },
 

@@ -26,7 +26,7 @@ async function loadPendingCount() {
   const { count, error } = await supabase
     .from('profiles')
     .select('id', { count: 'exact', head: true })
-    .eq('status', 'pending')
+    .eq('status', 'awaiting_payment')
   if (!error) pendingCount.value = count || 0
 }
 
@@ -138,6 +138,7 @@ onUnmounted(() => {
             <router-link to="/beheer/eindstanden" @click="adminOpen = false">Eindstanden poules</router-link>
             <router-link to="/beheer/deadlines" @click="adminOpen = false">Deadlines</router-link>
             <router-link to="/beheer/bonusantwoorden" @click="adminOpen = false">Bonusantwoorden</router-link>
+            <router-link to="/beheer/betalingen" @click="adminOpen = false">Betaalinstellingen</router-link>
           </div>
         </div>
 

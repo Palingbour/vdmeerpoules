@@ -32,6 +32,7 @@ const routes = [
   { path: '/beheer/eindstanden', name: 'admin-group-results', component: () => import('../pages/admin/GroupResults.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
   { path: '/beheer/deadlines', name: 'admin-deadlines', component: () => import('../pages/admin/Deadlines.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
   { path: '/beheer/bonusantwoorden', name: 'admin-bonus', component: () => import('../pages/admin/BonusAnswers.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
+  { path: '/beheer/betalingen', name: 'admin-payments', component: () => import('../pages/admin/PaymentSettings.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
 
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
@@ -47,7 +48,7 @@ router.beforeEach(async (to) => {
 
   if (to.meta.public) {
     if (auth.isLoggedIn && to.name === 'login') {
-      return { name: auth.isActive ? 'dashboard' : 'pending' }
+      return { name: 'dashboard' }
     }
     return true
   }
@@ -56,15 +57,18 @@ router.beforeEach(async (to) => {
     return { name: 'login' }
   }
 
-  if (to.meta.requiresActive && !auth.isActive) {
-    return { name: 'pending' }
+  // 'requiresActive' betekent nu: is deelnemer (active OF awaiting_payment).
+  // Alleen 'inactive' wordt geblokkeerd.
+  if (to.meta.requiresActive && !auth.isParticipant) {
+    return { name: 'login' }
   }
 
   if (to.meta.requiresAdmin && !auth.isAdmin) {
     return { name: 'dashboard' }
   }
 
-  if (to.name === 'pending' && auth.isActive) {
+  // Oude /wachten route niet meer nodig — redirect naar dashboard
+  if (to.name === 'pending') {
     return { name: 'dashboard' }
   }
 

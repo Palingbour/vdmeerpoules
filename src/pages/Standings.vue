@@ -148,6 +148,7 @@ function sharedRank(idx) {
             </td>
             <td class="col-name">
               <strong>{{ row.full_name }}</strong>
+              <span v-if="row.status === 'awaiting_payment'" class="status-badge waiting" title="Wacht op betaling">💸</span>
               <span v-if="row.role === 'admin'" class="admin-tag mono">admin</span>
             </td>
             <td class="col-r mono" :class="{ zero: row.r1_points === 0 }">{{ row.r1_points }}</td>
@@ -295,6 +296,13 @@ function sharedRank(idx) {
   text-transform: uppercase;
   color: var(--ink-mute);
 }
+.status-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.875rem;
+  cursor: help;
+}
+.status-badge.waiting { opacity: 0.7; }
 .footer-note {
   padding: var(--s-3) var(--s-4);
   font-size: 0.8125rem;
