@@ -18,7 +18,9 @@ export const useAuthStore = defineStore('auth', {
     isActive: (s) => s.profile?.status === 'active',
     // 'isParticipant' — kan voorspellen, dashboard zien, etc. — active OF awaiting_payment
     isParticipant: (s) => s.profile?.status === 'active' || s.profile?.status === 'awaiting_payment',
-    isAdmin: (s) => s.profile?.role === 'admin' && s.profile?.status === 'active'
+    // Admin behoudt rechten ook bij awaiting_payment (admin moet zichzelf
+    // kunnen activeren). Alleen 'inactive' admins verliezen toegang.
+    isAdmin: (s) => s.profile?.role === 'admin' && s.profile?.status !== 'inactive'
   },
 
   actions: {

@@ -135,9 +135,9 @@ onMounted(() => {
     </div>
 
     <!-- Voor actieve gebruikers: korte bevestiging -->
-    <div v-else-if="auth.isActive && !auth.isAdmin" class="card" style="background: rgba(45, 128, 69, 0.05)">
+    <div v-else-if="auth.isActive" class="card" style="background: rgba(45, 128, 69, 0.05); margin-top: var(--s-5)">
       <p style="margin: 0">
-        ✓ Je inleg is bevestigd door de beheerder. Je doet officieel mee.
+        ✓ Je inleg is bevestigd. Je doet officieel mee aan de toto.
       </p>
     </div>
   </main>
