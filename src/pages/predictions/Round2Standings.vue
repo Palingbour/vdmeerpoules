@@ -514,4 +514,26 @@ function getCardClass(letter) {
 }
 .arrow:hover:not(:disabled) { background: var(--bg-card); border-color: var(--field); color: var(--field); }
 .arrow:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Mobiel */
+@media (max-width: 768px) {
+  .groups-grid {
+    grid-template-columns: 1fr;
+    gap: var(--s-3);
+  }
+}
+@media (max-width: 640px) {
+  .standing-row {
+    grid-template-columns: 28px 24px 1fr auto;
+    gap: var(--s-2);
+    padding: 10px var(--s-2);
+  }
+  .arrow {
+    width: 28px;
+    height: 22px;
+    font-size: 14px;
+  }
+  .pos { font-size: 1rem; }
+  .flag { width: 22px; height: 15px; }
+}
 </style>

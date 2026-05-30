@@ -311,15 +311,46 @@ function sharedRank(idx) {
   border-top: 1px solid var(--line);
 }
 
-/* Horizontale scroll op smalle schermen ipv kolommen verbergen */
+/* Horizontale scroll op smalle schermen met scroll-hint shadow rechts */
 .leaderboard {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
 }
 .lb-table {
   min-width: 720px;
 }
+
+/* Scroll-hint: subtle shadow rechts geeft hint dat er meer is */
+@media (max-width: 768px) {
+  .leaderboard {
+    background:
+      linear-gradient(to right, var(--bg-card), var(--bg-card)) left center / 30px 100% no-repeat,
+      linear-gradient(to right, rgba(30, 42, 30, 0.08), transparent) left center / 15px 100% no-repeat,
+      linear-gradient(to left, var(--bg-card), var(--bg-card)) right center / 30px 100% no-repeat,
+      linear-gradient(to left, rgba(30, 42, 30, 0.12), transparent) right center / 15px 100% no-repeat;
+    background-attachment: local, scroll, local, scroll;
+  }
+  .lb-table th, .lb-table td {
+    padding: 8px 6px;
+    font-size: 0.875rem;
+  }
+  /* Naam-kolom blijft "vastgezet" - eerste 2 kolommen */
+  .col-pos, .col-name { position: sticky; background: var(--bg-card); z-index: 1; }
+  .col-pos { left: 0; min-width: 28px; }
+  .col-name {
+    left: 28px;
+    box-shadow: 2px 0 4px rgba(30, 42, 30, 0.06);
+    min-width: 100px;
+    max-width: 140px;
+  }
+  thead .col-pos, thead .col-name {
+    background: var(--bg-elev);
+  }
+}
+
 @media (max-width: 540px) {
-  .my-rank-card { flex-direction: column; align-items: flex-start; gap: var(--s-3); }
+  .my-rank-card { flex-direction: column; align-items: flex-start; gap: var(--s-3); padding: var(--s-4); }
   .my-points { text-align: left; }
 }
 </style>

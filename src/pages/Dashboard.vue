@@ -421,4 +421,32 @@ function roundRoute(r) {
 .progress-text { font-size: 0.8125rem; color: var(--ink-soft); margin-bottom: 6px; }
 .progress-bar { height: 6px; background: var(--bg-elev); border-radius: 3px; overflow: hidden; }
 .progress-fill { height: 100%; background: var(--field); transition: width 0.3s; }
+
+/* Mobiel */
+@media (max-width: 640px) {
+  .standing-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s-3);
+    padding: var(--s-4);
+  }
+  .ss-divider { display: none; }
+  .ss-rank, .ss-points {
+    width: 100%;
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--s-3);
+  }
+  .ss-link {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+  .countdown-card {
+    padding: var(--s-4);
+  }
+  .countdown-deadlines { gap: 6px; }
+  .rounds-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
 </style>

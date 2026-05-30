@@ -176,4 +176,16 @@ onMounted(() => {
 }
 .badge-pending { background: var(--accent, #d4561d); color: white; }
 .badge-inactive { background: var(--ink-mute); color: white; }
+
+@media (max-width: 640px) {
+  .qr-image {
+    max-width: 220px;
+  }
+  .qr-container {
+    padding: var(--s-3);
+  }
+  .payment-card {
+    margin-top: var(--s-4);
+  }
+}
 </style>

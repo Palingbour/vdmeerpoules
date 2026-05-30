@@ -165,4 +165,8 @@ function backToLogin() {
 <style scoped>
 .login-hero { text-align: center; margin-bottom: var(--s-7); }
 .login-hero p.muted { max-width: 36ch; margin-left: auto; margin-right: auto; }
+
+@media (max-width: 640px) {
+  .login-hero { margin-bottom: var(--s-5); }
+}
 </style>

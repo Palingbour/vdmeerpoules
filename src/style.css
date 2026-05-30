@@ -396,12 +396,68 @@ h3 { font-size: 1.25rem; line-height: 1.25; }
 .right { margin-left: auto; }
 
 /* ============================================================
-   Mobile
+   Mobile - systematisch alle layout & typography
    ============================================================ */
-@media (max-width: 640px) {
+
+/* Tablet en groot mobiel (~768px en kleiner) */
+@media (max-width: 768px) {
   .page { padding: var(--s-5) var(--s-4); }
   .card { padding: var(--s-5); }
-  .navbar { padding: var(--s-3) var(--s-4); }
-  .nav-links { gap: var(--s-4); }
-  h1 { font-size: 2rem; }
+  h1 { font-size: clamp(1.75rem, 7vw, 2.5rem); }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.125rem; }
+
+  /* Body typography iets compacter zodat content past */
+  body { font-size: 15px; }
+
+  /* Buttons gemaakt voor touch: min 44px hoogte */
+  .btn { min-height: 44px; padding: 10px 18px; }
+  .btn-sm { min-height: 36px; padding: 7px 12px; font-size: 0.875rem; }
+
+  /* Inputs voor touch geschikt */
+  .field input,
+  .field select,
+  .field textarea {
+    min-height: 44px;
+    font-size: 16px;  /* voorkomt zoom op iOS focus */
+  }
+
+  /* Rij wrappt zodat content niet uit beeld valt */
+  .row { flex-wrap: wrap; }
+}
+
+/* Telefoon (~480px en kleiner) */
+@media (max-width: 480px) {
+  .page { padding: var(--s-4) var(--s-3); }
+  .card { padding: var(--s-4); }
+  h1 { font-size: clamp(1.5rem, 8vw, 2rem); }
+}
+
+/* Zeer klein scherm (~380px en kleiner) */
+@media (max-width: 380px) {
+  .page { padding: var(--s-3) var(--s-3); }
+  .card { padding: var(--s-3); }
+}
+
+/* Tabellen scrollbaar op mobiel met scroll-hint shadow */
+@media (max-width: 768px) {
+  .table-wrap,
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    background:
+      linear-gradient(to right, var(--bg-card), var(--bg-card)) left center / 20px 100% no-repeat,
+      linear-gradient(to right, rgba(30,42,30,0.08), transparent) left center / 12px 100% no-repeat,
+      linear-gradient(to left, var(--bg-card), var(--bg-card)) right center / 20px 100% no-repeat,
+      linear-gradient(to left, rgba(30,42,30,0.08), transparent) right center / 12px 100% no-repeat;
+    background-attachment: local, scroll, local, scroll;
+  }
+  .table {
+    min-width: 100%;
+  }
+  .table th,
+  .table td {
+    padding: 10px 8px;
+    white-space: nowrap;
+  }
 }

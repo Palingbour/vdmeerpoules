@@ -236,4 +236,7 @@ function fmtDate(iso) {
 @media (max-width: 900px) {
   .edit-form { grid-template-columns: 1fr 1fr; }
 }
+@media (max-width: 640px) {
+  .edit-form { grid-template-columns: 1fr; }
+}
 </style>

@@ -327,4 +327,11 @@ function getQuestionClass(q) {
   opacity: 0.6;
   background: var(--bg-elev);
 }
+
+/* Mobiel */
+@media (max-width: 640px) {
+  .num-input { max-width: 100%; }
+  .question-card { padding: var(--s-4); }
+  .question-text { font-size: 0.9375rem; }
+}
 </style>
