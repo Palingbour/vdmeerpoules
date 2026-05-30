@@ -63,10 +63,13 @@ function backToLogin() {
   <main class="page page-narrow">
     <div class="login-hero">
       <p class="eyebrow">WK 2026 · familietoto</p>
-      <h1>Van der Meer Poules</h1>
+      <h1>Fam. van der Meer WK poule 2026</h1>
       <p class="muted">
-        De familietraditie sinds 2012, nu digitaal. Voorspel uitslagen,
-        jaag op de pot, schop de neef van zijn troon.
+        De familietraditie, nu digitaal. Voorspel uitslagen, jaag op de pot
+        en schop het tot kampioen.
+      </p>
+      <p class="muted" style="margin-top: var(--s-2)">
+        Er zijn meerdere winnaars, zo blijft het leuk voor iedereen!
       </p>
     </div>
 

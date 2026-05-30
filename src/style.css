@@ -53,13 +53,36 @@ body {
   line-height: 1.55;
   color: var(--ink);
   background: var(--bg);
-  background-image:
-    radial-gradient(circle at 8% 20%, rgba(212, 86, 29, 0.04) 0%, transparent 40%),
-    radial-gradient(circle at 92% 80%, rgba(212, 160, 23, 0.06) 0%, transparent 50%),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80' fill='none'><circle cx='40' cy='40' r='12' fill='none' stroke='%231e2a1e' stroke-opacity='0.04' stroke-width='1'/><polygon points='40,30 47,35 44,43 36,43 33,35' fill='%231e2a1e' fill-opacity='0.03'/></svg>");
-  background-attachment: fixed;
-  background-size: auto, auto, 200px 200px;
   -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+/* WK 2026 logo als gefixeerde watermark — zit achter content, blijft op
+   z'n plek bij scrollen, semi-transparant zodat tekst leesbaar blijft. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 8% 20%, rgba(212, 86, 29, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 92% 80%, rgba(212, 160, 23, 0.07) 0%, transparent 50%),
+    url("https://www.planetzone.nl/wp-content/uploads/wk-2026-logo.jpg");
+  background-position: center, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-size: auto, auto, min(600px, 70vw) auto;
+  opacity: 0.85;
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* Witte sluier over het logo zodat content goed contrast houdt */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(253, 242, 224, 0.78);
+  z-index: -1;
+  pointer-events: none;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
