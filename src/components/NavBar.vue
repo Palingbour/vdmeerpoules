@@ -128,6 +128,7 @@ onUnmounted(() => {
         </div>
 
         <router-link to="/profiel">Profiel</router-link>
+        <router-link to="/spelregels">Spelregels</router-link>
 
         <div v-if="auth.isAdmin" class="admin-dropdown" ref="dropdownRef">
           <button
@@ -177,6 +178,7 @@ onUnmounted(() => {
           </div>
 
           <router-link to="/profiel" class="mobile-link" @click="closeMobile">Profiel</router-link>
+          <router-link to="/spelregels" class="mobile-link" @click="closeMobile">Spelregels</router-link>
 
           <div v-if="auth.isAdmin" class="mobile-section">
             <div class="mobile-section-title">

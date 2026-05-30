@@ -177,6 +177,14 @@ function roundRoute(r) {
   if (r.nr === 8) return '/voorspellen/bonusvragen'
   return null
 }
+
+async function dismissIntro() {
+  try {
+    await auth.updateProfile({ intro_seen: true })
+  } catch (e) {
+    console.error('Kon intro niet dismissen:', e)
+  }
+}
 </script>
 
 <template>
@@ -187,6 +195,44 @@ function roundRoute(r) {
     <div v-if="loading" class="muted">Laden…</div>
 
     <template v-else>
+      <!-- Welkomstkaart voor nieuwe gebruikers (eenmalig) -->
+      <div v-if="!auth.profile?.intro_seen" class="intro-card">
+        <div class="intro-header">
+          <h2 style="margin: 0">Welkom bij de poule! 🏆</h2>
+          <button class="intro-close" @click="dismissIntro" aria-label="Sluiten">×</button>
+        </div>
+        <p class="intro-lead">
+          Dit jaar weer dezelfde WK-toto, maar nu volledig digitaal.
+          Even kort hoe het werkt:
+        </p>
+        <ol class="intro-steps">
+          <li>
+            <strong>Voorspel</strong> wedstrijduitslagen, eindstanden van
+            poules en bonusvragen — punten verzamelen tot het einde.
+          </li>
+          <li>
+            <strong>Deadlines</strong>: vóór 11 juni 18:00 vullen voor R1, R2 en R8.
+            Voor de knock-out rondes vul je telkens vlak voor de volgende ronde in.
+          </li>
+          <li>
+            <strong>Inleg</strong>: €10 via QR-code op je profielpagina. Zodra
+            betaald, doe je officieel mee in de stand.
+          </li>
+          <li>
+            <strong>Alles slaat automatisch op</strong> en de stand updatet
+            live na elke wedstrijd. Mobiel werkt ook.
+          </li>
+        </ol>
+        <div class="intro-actions">
+          <router-link to="/spelregels" class="btn btn-primary">
+            Volledige uitleg →
+          </router-link>
+          <button class="btn btn-secondary" @click="dismissIntro">
+            Begrepen, niet meer tonen
+          </button>
+        </div>
+      </div>
+
       <!-- Mijn stand-samenvatting -->
       <div v-if="myStanding && myStanding.rank" class="standing-summary">
         <div class="ss-rank">
@@ -422,8 +468,58 @@ function roundRoute(r) {
 .progress-bar { height: 6px; background: var(--bg-elev); border-radius: 3px; overflow: hidden; }
 .progress-fill { height: 100%; background: var(--field); transition: width 0.3s; }
 
-/* Mobiel */
+/* Welkomstkaart voor nieuwe gebruikers */
+.intro-card {
+  background: linear-gradient(135deg, rgba(212, 160, 23, 0.12), rgba(212, 160, 23, 0.03));
+  border: 1px solid rgba(212, 160, 23, 0.3);
+  border-radius: var(--r-lg);
+  padding: var(--s-5) var(--s-6);
+  margin-bottom: var(--s-5);
+  box-shadow: 0 2px 12px rgba(212, 160, 23, 0.06);
+}
+.intro-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--s-3);
+}
+.intro-close {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ink-mute);
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  font-weight: 300;
+}
+.intro-close:hover { background: rgba(0,0,0,0.04); color: var(--ink); }
+.intro-lead {
+  margin: 0 0 var(--s-3);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.intro-steps {
+  margin: 0 0 var(--s-4);
+  padding-left: var(--s-5);
+}
+.intro-steps li {
+  padding: 5px 0;
+  line-height: 1.5;
+  font-size: 0.9375rem;
+}
+.intro-actions {
+  display: flex;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+/* Welkomstkaart styles + bestaande mobiel rules */
 @media (max-width: 640px) {
+  .intro-card { padding: var(--s-4); }
+  .intro-actions { flex-direction: column; }
+  .intro-actions .btn { width: 100%; text-align: center; }
   .standing-summary {
     flex-direction: column;
     align-items: flex-start;

@@ -71,6 +71,11 @@ function backToLogin() {
       <p class="muted" style="margin-top: var(--s-2)">
         Er zijn meerdere winnaars, zo blijft het leuk voor iedereen!
       </p>
+      <div class="cost-pill">
+        <span class="cost-label">Inleg</span>
+        <span class="cost-amount">€ 10,-</span>
+        <span class="cost-note">per persoon</span>
+      </div>
     </div>
 
     <!-- Check-mail scherm na signup -->
@@ -165,6 +170,33 @@ function backToLogin() {
 <style scoped>
 .login-hero { text-align: center; margin-bottom: var(--s-7); }
 .login-hero p.muted { max-width: 36ch; margin-left: auto; margin-right: auto; }
+
+.cost-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: var(--s-4);
+  padding: 8px 16px;
+  background: rgba(212, 160, 23, 0.12);
+  border: 1px solid rgba(212, 160, 23, 0.3);
+  border-radius: 999px;
+  font-size: 0.875rem;
+}
+.cost-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-mute);
+}
+.cost-amount {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #b8861a;
+}
+.cost-note { color: var(--ink-soft); font-size: 0.8125rem; }
 
 @media (max-width: 640px) {
   .login-hero { margin-bottom: var(--s-5); }
