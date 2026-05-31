@@ -169,6 +169,14 @@ function sharedRank(idx) {
         Daarna alfabetisch.
       </p>
     </div>
+
+    <router-link v-if="!loading" to="/prijzenpot" class="pot-teaser">
+      <span class="pot-teaser-icon">🏆</span>
+      <span class="pot-teaser-text">
+        <strong>Wat is er te winnen?</strong>
+        Bekijk de prijzenpot en de verdeling →
+      </span>
+    </router-link>
   </main>
 </template>
 
@@ -310,6 +318,23 @@ function sharedRank(idx) {
   margin: 0;
   border-top: 1px solid var(--line);
 }
+
+/* Prijzenpot-verwijzing onderaan */
+.pot-teaser {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  background: linear-gradient(135deg, var(--gold-soft, #f0d98a), var(--gold, #d4a017));
+  border-radius: var(--r-md);
+  color: var(--ink, #1e2a1e);
+  box-shadow: 0 3px 12px rgba(212, 160, 23, 0.18);
+}
+.pot-teaser:hover { text-decoration: none; opacity: 0.95; }
+.pot-teaser-icon { font-size: 1.5rem; }
+.pot-teaser-text { font-size: 0.9375rem; }
+.pot-teaser-text strong { display: block; }
 
 /* Horizontale scroll op smalle schermen */
 .leaderboard {

@@ -319,6 +319,18 @@ async function dismissIntro() {
           <router-link v-if="roundRoute(r) && roundStatus(r).cls === 'open'" :to="roundRoute(r)" class="btn btn-primary btn-sm" style="margin-top: var(--s-3); display: inline-flex">Voorspellen →</router-link>
           <router-link v-else-if="roundRoute(r)" :to="roundRoute(r)" class="btn btn-secondary btn-sm" style="margin-top: var(--s-3); display: inline-flex">Bekijken</router-link>
         </div>
+
+        <!-- 9e blokje: prijzenpot -->
+        <router-link to="/prijzenpot" class="round-card prize-card">
+          <div class="round-header">
+            <div>
+              <span class="round-num mono">🏆</span>
+              <strong>Prijzenpot</strong>
+            </div>
+            <span class="round-status status-prize">bekijken</span>
+          </div>
+          <div class="prize-card-text">Bekijk de pot en de verdeling →</div>
+        </router-link>
       </div>
     </template>
   </main>
@@ -463,6 +475,25 @@ async function dismissIntro() {
 .status-open { background: #ebf4e1; color: var(--ok); }
 .status-closed { background: var(--bg-elev); color: var(--ink-mute); }
 .status-pending { background: #fbf3dc; color: var(--warn); }
+.status-prize { background: rgba(212, 160, 23, 0.18); color: #b8861a; }
+
+/* Prijzenpot-blokje in de rondes-grid */
+.prize-card {
+  display: block;
+  background: linear-gradient(135deg, rgba(212, 160, 23, 0.12), rgba(212, 160, 23, 0.04));
+  border: 1px solid rgba(212, 160, 23, 0.35);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.prize-card:hover {
+  box-shadow: 0 4px 14px rgba(212, 160, 23, 0.18);
+  text-decoration: none;
+}
+.prize-card-text {
+  margin-top: var(--s-3);
+  font-size: 0.875rem;
+  color: #9a7416;
+  font-weight: 600;
+}
 .round-progress { margin-top: var(--s-3); }
 .progress-text { font-size: 0.8125rem; color: var(--ink-soft); margin-bottom: 6px; }
 .progress-bar { height: 6px; background: var(--bg-elev); border-radius: 3px; overflow: hidden; }
