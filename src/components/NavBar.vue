@@ -151,6 +151,7 @@ onUnmounted(() => {
             <router-link to="/beheer/deadlines" @click="adminOpen = false">Deadlines</router-link>
             <router-link to="/beheer/bonusantwoorden" @click="adminOpen = false">Bonusantwoorden</router-link>
             <router-link to="/beheer/betalingen" @click="adminOpen = false">Betaalinstellingen</router-link>
+            <router-link to="/beheer/berichten" @click="adminOpen = false">Berichten</router-link>
           </div>
         </div>
 
@@ -194,6 +195,7 @@ onUnmounted(() => {
             <router-link to="/beheer/deadlines" class="mobile-sublink" @click="closeMobile">Deadlines</router-link>
             <router-link to="/beheer/bonusantwoorden" class="mobile-sublink" @click="closeMobile">Bonusantwoorden</router-link>
             <router-link to="/beheer/betalingen" class="mobile-sublink" @click="closeMobile">Betaalinstellingen</router-link>
+            <router-link to="/beheer/berichten" class="mobile-sublink" @click="closeMobile">Berichten</router-link>
           </div>
 
           <button class="mobile-link mobile-logout" @click="handleLogout">Uitloggen</button>

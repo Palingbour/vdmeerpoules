@@ -36,6 +36,7 @@ const routes = [
   { path: '/beheer/deadlines', name: 'admin-deadlines', component: () => import('../pages/admin/Deadlines.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
   { path: '/beheer/bonusantwoorden', name: 'admin-bonus', component: () => import('../pages/admin/BonusAnswers.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
   { path: '/beheer/betalingen', name: 'admin-payments', component: () => import('../pages/admin/PaymentSettings.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
+  { path: '/beheer/berichten', name: 'admin-broadcast', component: () => import('../pages/admin/Broadcast.vue'), meta: { requiresAuth: true, requiresActive: true, requiresAdmin: true } },
 
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
