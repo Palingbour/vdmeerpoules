@@ -35,8 +35,9 @@ const totalLivePoints = computed(() => {
   return Object.values(livePoints.value).reduce((sum, n) => sum + (n || 0), 0)
 })
 
-async function load() {
-  loading.value = true
+async function load(opts = {}) {
+  const silent = opts.silent === true
+  if (!silent) loading.value = true
   error.value = ''
 
   const [roundRes, teamsRes, predsRes, resultsRes, liveRankRes, liveScoreRes] = await Promise.all([
@@ -78,6 +79,19 @@ async function load() {
     statusMap[p.group_letter] = 'ok'
     pointsMap[p.group_letter] = p.points_awarded || 0
   }
+
+  if (silent) {
+    // Behoud de lokale (mogelijk net gesleepte / nog-opslaande) volgorde,
+    // zodat een binnenkomende uitslag je handeling niet platwalst.
+    for (const letter of Object.keys(orders.value)) {
+      const st = savedStatus.value[letter]
+      if (st === 'saving' || st === 'error') {
+        orderMap[letter] = orders.value[letter]
+        statusMap[letter] = st
+      }
+    }
+  }
+
   orders.value = orderMap
   savedStatus.value = statusMap
   groupPoints.value = pointsMap
@@ -106,7 +120,7 @@ async function load() {
   }
   livePoints.value = liveScoreMap
 
-  loading.value = false
+  if (!silent) loading.value = false
 }
 
 onMounted(() => {
@@ -114,12 +128,16 @@ onMounted(() => {
   // Realtime: ververs zodra een wedstrijd of voorspelling wijzigt
   channel = supabase
     .channel('r2-live-watch')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => load())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'group_results' }, () => load())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => load({ silent: true }))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'group_results' }, () => load({ silent: true }))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'group_predictions' }, (payload) => {
-      if (payload.new?.user_id === auth.profile?.id || payload.old?.user_id === auth.profile?.id) {
-        load()
-      }
+      // BEWUST: we herladen NIET op onze eigen voorspellings-wijzigingen.
+      // savePrediction() schrijft naar group_predictions; die echo zou hier
+      // een volledige load() triggeren, wat de pagina naar boven laat springen
+      // terwijl je een poule lager op de pagina aan het sorteren bent.
+      // De lokale staat is al bijgewerkt door de sleep/pijl-actie zelf, dus
+      // een herlaad is overbodig. Wijzigingen van een ander apparaat van
+      // dezelfde gebruiker zijn een zeldzaam randgeval dat we hier negeren.
     })
     .subscribe()
 })
