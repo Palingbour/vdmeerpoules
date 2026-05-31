@@ -118,7 +118,8 @@ function fmtDate(iso) {
         Nog geen wedstrijden voor deze ronde.
       </div>
 
-      <table v-else class="table">
+      <div v-else class="table-scroll">
+      <table class="table">
         <thead>
           <tr>
             <th>#</th>
@@ -198,6 +199,7 @@ function fmtDate(iso) {
           </template>
         </tbody>
       </table>
+      </div>
     </div>
   </main>
 </template>

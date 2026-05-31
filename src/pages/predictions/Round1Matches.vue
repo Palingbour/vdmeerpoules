@@ -443,17 +443,35 @@ function getScoreClass(m) {
 
 @media (max-width: 640px) {
   .match-card { padding: var(--s-3); }
+  /* Compact naast elkaar houden: land — uitslag — land blijft op één rij */
   .match-teams {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto 1fr;
     gap: var(--s-2);
+    align-items: center;
   }
-  .team-home, .team-away {
-    justify-content: flex-start;
-    text-align: left;
+  .team { gap: 6px; min-width: 0; }            /* min-width:0 laat de naam inkorten */
+  .team-home { justify-content: flex-end; text-align: right; }
+  .team-away { justify-content: flex-start; text-align: left; }
+  .team-name {
+    font-size: 0.8125rem;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
   }
-  .team-away { flex-direction: row-reverse; justify-content: flex-end; }
-  .score-input { justify-content: center; padding: var(--s-2) 0; }
-  .team-name { font-size: 0.9375rem; }
-  .flag { width: 28px; height: 19px; }
+  .flag { width: 24px; height: 16px; }
+  .score-input { gap: 3px; }
+  .score-box { width: 38px; height: 40px; font-size: 1.05rem; }
+  .dash { font-size: 0.8125rem; }
+  .match-meta { gap: var(--s-2); font-size: 0.75rem; }
+}
+
+/* Heel smal (oude/kleine telefoons): vlag boven de naam, nog steeds 3 koloms */
+@media (max-width: 380px) {
+  .team { flex-direction: column; gap: 3px; }
+  .team-home, .team-away { text-align: center; justify-content: center; }
+  .team-name { font-size: 0.75rem; white-space: normal; }
+  .flag { width: 26px; height: 17px; }
 }
 </style>

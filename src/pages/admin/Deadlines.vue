@@ -4,7 +4,6 @@ import { supabase } from '../../lib/supabase.js'
 
 const rounds = ref([])
 const editedDeadlines = ref({})
-const editedAmounts = ref({})
 const saving = ref({})
 const error = ref('')
 
@@ -17,7 +16,6 @@ async function load() {
   rounds.value = data
   for (const r of data) {
     editedDeadlines.value[r.nr] = r.deadline ? toLocalDateTime(r.deadline) : ''
-    editedAmounts.value[r.nr] = r.prize_amount
   }
 }
 
@@ -38,10 +36,7 @@ async function save(r) {
     : null
   const { error: err } = await supabase
     .from('rounds')
-    .update({
-      deadline,
-      prize_amount: parseFloat(editedAmounts.value[r.nr])
-    })
+    .update({ deadline })
     .eq('nr', r.nr)
   if (err) error.value = err.message
   saving.value[r.nr] = false
@@ -52,23 +47,24 @@ async function save(r) {
 <template>
   <main class="page">
     <p class="eyebrow">Beheer</p>
-    <h1>Deadlines &amp; prijzen</h1>
+    <h1>Deadlines</h1>
 
     <div class="card">
       <p class="muted" style="margin-top: 0">
-        Per ronde stel je de deadline in (vanaf wanneer voorspellingen vastgezet
-        zijn) en het prijsbedrag voor de winnaar van die ronde. Standaard €5 per ronde.
+        Per ronde stel je de deadline in: vanaf dat moment zijn de voorspellingen
+        voor die ronde vastgezet. De prijsbedragen beheer je op de
+        <router-link to="/prijzenpot">prijzenpot-pagina</router-link>.
       </p>
 
       <div v-if="error" class="alert alert-error">{{ error }}</div>
 
-      <table class="table" style="margin-top: var(--s-4)">
+      <div class="table-scroll" style="margin-top: var(--s-4)">
+      <table class="table">
         <thead>
           <tr>
             <th>#</th>
             <th>Naam</th>
             <th>Deadline</th>
-            <th>Rondeprijs (€)</th>
             <th></th>
           </tr>
         </thead>
@@ -84,15 +80,6 @@ async function save(r) {
               />
             </td>
             <td>
-              <input
-                type="number"
-                step="0.50"
-                min="0"
-                v-model="editedAmounts[r.nr]"
-                class="amount-input"
-              />
-            </td>
-            <td>
               <button
                 class="btn btn-primary btn-sm"
                 @click="save(r)"
@@ -104,20 +91,13 @@ async function save(r) {
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   </main>
 </template>
 
 <style scoped>
 .dt-input {
-  padding: 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-}
-.amount-input {
-  width: 90px;
   padding: 6px 8px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);

@@ -178,11 +178,17 @@ function roundRoute(r) {
   return null
 }
 
+const introDismissed = ref(false)
+
 async function dismissIntro() {
+  // Optimistisch: melding meteen weg, ook als het opslaan traag is of faalt.
+  introDismissed.value = true
   try {
     await auth.updateProfile({ intro_seen: true })
   } catch (e) {
     console.error('Kon intro niet dismissen:', e)
+    // Blijft lokaal weg voor deze sessie; volgende keer toont 'ie weer
+    // als het echt niet opgeslagen kon worden.
   }
 }
 </script>
@@ -196,7 +202,7 @@ async function dismissIntro() {
 
     <template v-else>
       <!-- Welkomstkaart voor nieuwe gebruikers (eenmalig) -->
-      <div v-if="!auth.profile?.intro_seen" class="intro-card">
+      <div v-if="!auth.profile?.intro_seen && !introDismissed" class="intro-card">
         <div class="intro-header">
           <h2 style="margin: 0">Welkom bij de poule! 🏆</h2>
           <button class="intro-close" @click="dismissIntro" aria-label="Sluiten">×</button>

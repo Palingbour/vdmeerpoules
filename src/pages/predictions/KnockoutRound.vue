@@ -567,9 +567,21 @@ function getScoreClass(m) {
 .save-err { color: var(--err); }
 
 @media (max-width: 720px) {
-  .ko-pairing { grid-template-columns: 1fr; gap: var(--s-2); }
+  .ko-card { padding: var(--s-3) var(--s-4); }
+  /* Dropdowns met lange landnamen blijven leesbaar = gestapeld, maar nette
+     volgorde: thuis → uitslag (gecentreerd) → uit. */
+  .ko-pairing {
+    grid-template-columns: 1fr;
+    gap: var(--s-3);
+  }
   .slot-away { text-align: left; }
   .slot-away .slot-label { text-align: left; }
-  .score-input { justify-content: center; padding: var(--s-2) 0; }
+  .score-input {
+    justify-content: center;
+    padding: var(--s-2) 0;
+    align-self: center;
+  }
+  .ko-meta { gap: var(--s-2); font-size: 0.75rem; }
+  .team-select { font-size: 1rem; }   /* 16px voorkomt inzoomen op iOS */
 }
 </style>
