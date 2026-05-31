@@ -184,7 +184,7 @@ async function dismissIntro() {
   // Optimistisch: melding meteen weg, ook als het opslaan traag is of faalt.
   introDismissed.value = true
   try {
-    await auth.updateProfile({ intro_seen: true })
+    await auth.dismissIntro()
   } catch (e) {
     console.error('Kon intro niet dismissen:', e)
     // Blijft lokaal weg voor deze sessie; volgende keer toont 'ie weer

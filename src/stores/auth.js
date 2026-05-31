@@ -114,7 +114,7 @@ export const useAuthStore = defineStore('auth', {
           password,
           options: {
             data: { full_name: fullName },
-            emailRedirectTo: window.location.origin + '/auth/callback'
+            emailRedirectTo: window.location.origin + '/'
           }
         })
         if (error) throw error
@@ -143,6 +143,23 @@ export const useAuthStore = defineStore('auth', {
         .single()
       if (error) throw error
       this.profile = data
+      return data
+    },
+
+    // Aparte methode voor het dismissen van de welkomstkaart.
+    // BEWUST een kale UPDATE (geen upsert): de rij bestaat al, en een upsert
+    // triggert de INSERT-tak van het RLS-beleid — waarvoor geen policy is,
+    // waardoor het stil faalt en de melding terugkomt na navigatie.
+    async dismissIntro() {
+      if (!this.session?.user?.id) throw new Error('Niet ingelogd')
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ intro_seen: true })
+        .eq('id', this.session.user.id)
+        .select()
+        .single()
+      if (error) throw error
+      if (this.profile) this.profile.intro_seen = true
       return data
     },
 
