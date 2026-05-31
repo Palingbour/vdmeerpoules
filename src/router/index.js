@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/auth.js'
 
 const routes = [
   { path: '/login', name: 'login', component: () => import('../pages/Login.vue'), meta: { public: true } },
+  { path: '/auth/callback', name: 'auth-callback', component: () => import('../pages/AuthCallback.vue'), meta: { public: true } },
   { path: '/wachten', name: 'pending', component: () => import('../pages/PendingApproval.vue'), meta: { requiresAuth: true } },
 
   { path: '/', name: 'dashboard', component: () => import('../pages/Dashboard.vue'), meta: { requiresAuth: true, requiresActive: true } },
