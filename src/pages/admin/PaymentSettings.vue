@@ -10,6 +10,8 @@ const error = ref('')
 
 const amount = ref('')
 const instructions = ref('')
+const paymentLink = ref('')
+const paymentText = ref('')
 const qrImageData = ref(null)
 const fileInput = ref(null)
 
@@ -26,6 +28,8 @@ async function load() {
     settings.value = data
     amount.value = data.amount || ''
     instructions.value = data.instructions || ''
+    paymentLink.value = data.payment_link || ''
+    paymentText.value = data.payment_text || ''
     qrImageData.value = data.qr_image_data || null
   }
   loading.value = false
@@ -75,6 +79,8 @@ async function save() {
     .update({
       amount: amount.value,
       instructions: instructions.value,
+      payment_link: paymentLink.value,
+      payment_text: paymentText.value,
       qr_image_data: qrImageData.value,
       updated_at: new Date().toISOString()
     })
@@ -124,6 +130,31 @@ async function save() {
           placeholder="bv. Tikkie naar Ronald op +31..."
         ></textarea>
         <span class="hint">Vrije tekst. Komt onder het bedrag te staan.</span>
+      </div>
+
+      <div class="field">
+        <label for="paylink">Betaallink (bankapp)</label>
+        <input
+          id="paylink"
+          v-model="paymentLink"
+          type="url"
+          placeholder="https://www.ing.nl/payreq/m/?trxid=..."
+        />
+        <span class="hint">
+          De betaalverzoek-link. Op mobiel opent deze direct de bankapp.
+          Vervang 'm hier als het ING-verzoek verloopt — geen nieuwe upload nodig.
+        </span>
+      </div>
+
+      <div class="field">
+        <label for="paytext">Tekst bij de betaallink</label>
+        <textarea
+          id="paytext"
+          v-model="paymentText"
+          rows="3"
+          placeholder="bv. Ik heb een betaalverzoek gemaakt van €10,00 voor..."
+        ></textarea>
+        <span class="hint">Komt boven de betaalknop te staan.</span>
       </div>
 
       <div class="field">

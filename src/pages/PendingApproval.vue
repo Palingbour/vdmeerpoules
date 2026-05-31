@@ -74,13 +74,14 @@ async function handleLogout() {
         <h3>Hoi {{ auth.profile?.full_name?.split(' ')[0] }} — je bent ingelogd.</h3>
         <p>
           Je aanmelding staat klaar. Zodra de beheerder je hebt goedgekeurd en de
-          inleg van <strong>€5</strong> heeft ontvangen, krijg je toegang tot de
+          inleg van <strong>€10</strong> heeft ontvangen, krijg je toegang tot de
           voorspellingen en de stand.
         </p>
 
         <div class="alert alert-info">
-          <strong>Inleg overmaken:</strong> €5 via Tikkie / bankoverschrijving
-          (vraag de beheerder om de gegevens als je die nog niet hebt).
+          <strong>Inleg overmaken:</strong> €10. Ga naar je
+          <router-link to="/profiel#betaling">profielpagina</router-link> —
+          daar staat een betaalknop (opent je bankapp) en een QR-code.
         </div>
 
         <p class="muted">

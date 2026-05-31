@@ -115,6 +115,20 @@ onMounted(() => {
 
         <p class="muted instructions">{{ paymentSettings?.instructions || 'Maak het bedrag over via Tikkie of bankoverschrijving aan de beheerder.' }}</p>
 
+        <!-- Betaallink: opent op mobiel direct de bankapp -->
+        <div v-if="paymentSettings?.payment_link" class="paylink-block">
+          <p v-if="paymentSettings?.payment_text" class="paylink-text">
+            {{ paymentSettings.payment_text }}
+          </p>
+          <a :href="paymentSettings.payment_link" target="_blank" rel="noopener" class="btn btn-primary paylink-btn">
+            Betaal {{ paymentSettings?.amount || '€ 10,-' }} via je bankapp →
+          </a>
+          <p class="muted paylink-hint">
+            Op je telefoon opent de knop direct je bank. Zit je op een computer?
+            Scan dan de QR-code hieronder met je telefoon.
+          </p>
+        </div>
+
         <div v-if="paymentSettings?.qr_image_data" class="qr-container">
           <img :src="paymentSettings.qr_image_data" alt="QR-code voor betaling" class="qr-image" />
           <p class="muted" style="text-align: center; font-size: 0.8125rem; margin-top: var(--s-2)">
@@ -173,6 +187,32 @@ onMounted(() => {
   margin-top: var(--s-3);
   font-size: 0.875rem;
   line-height: 1.5;
+}
+
+/* Betaallink-blok */
+.paylink-block {
+  margin: var(--s-4) 0;
+  padding: var(--s-4);
+  background: rgba(45, 128, 69, 0.06);
+  border: 1px solid rgba(45, 128, 69, 0.25);
+  border-radius: var(--r-md);
+}
+.paylink-text {
+  margin: 0 0 var(--s-3);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.paylink-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 1.0625rem;
+  padding: 14px 20px;
+}
+.paylink-hint {
+  margin: var(--s-3) 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
 }
 .badge-pending { background: var(--accent, #d4561d); color: white; }
 .badge-inactive { background: var(--ink-mute); color: white; }
