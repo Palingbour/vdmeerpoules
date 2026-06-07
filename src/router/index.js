@@ -8,6 +8,7 @@ const routes = [
 
   { path: '/', name: 'dashboard', component: () => import('../pages/Dashboard.vue'), meta: { requiresAuth: true, requiresActive: true } },
   { path: '/stand', name: 'standings', component: () => import('../pages/Standings.vue'), meta: { requiresAuth: true, requiresActive: true } },
+  { path: '/speler/:userId', name: 'member-predictions', component: () => import('../pages/MemberPredictions.vue'), meta: { requiresAuth: true, requiresActive: true } },
   { path: '/spelregels', name: 'rules', component: () => import('../pages/Rules.vue'), meta: { requiresAuth: true, requiresActive: true } },
   { path: '/prijzenpot', name: 'prizepot', component: () => import('../pages/PrizePot.vue'), meta: { requiresAuth: true, requiresActive: true } },
   { path: '/profiel', name: 'profile', component: () => import('../pages/Profile.vue'), meta: { requiresAuth: true, requiresActive: true } },

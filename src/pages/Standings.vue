@@ -147,7 +147,9 @@ function sharedRank(idx) {
               </span>
             </td>
             <td class="col-name">
-              <strong>{{ row.full_name }}</strong>
+              <router-link :to="`/speler/${row.id}`" class="name-link">
+                <strong>{{ row.full_name }}</strong>
+              </router-link>
               <span v-if="row.status === 'awaiting_payment'" class="status-badge waiting" title="Wacht op betaling">💸</span>
               <span v-if="row.role === 'admin'" class="admin-tag mono">admin</span>
             </td>
@@ -303,6 +305,15 @@ function sharedRank(idx) {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--ink-mute);
+}
+.name-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted transparent;
+  transition: border-color 0.15s;
+}
+.name-link:hover {
+  border-bottom-color: currentColor;
 }
 .status-badge {
   display: inline-block;
