@@ -17,22 +17,28 @@ const fileInput = ref(null)
 
 async function load() {
   loading.value = true
-  const { data, error: err } = await supabase
-    .from('payment_settings')
-    .select('*')
-    .eq('id', 1)
-    .single()
-  if (err) {
-    error.value = err.message
-  } else {
-    settings.value = data
-    amount.value = data.amount || ''
-    instructions.value = data.instructions || ''
-    paymentLink.value = data.payment_link || ''
-    paymentText.value = data.payment_text || ''
-    qrImageData.value = data.qr_image_data || null
+  try {
+    const { data, error: err } = await supabase
+      .from('payment_settings')
+      .select('*')
+      .eq('id', 1)
+      .single()
+    if (err) {
+      error.value = err.message
+    } else {
+      settings.value = data
+      amount.value = data.amount || ''
+      instructions.value = data.instructions || ''
+      paymentLink.value = data.payment_link || ''
+      paymentText.value = data.payment_text || ''
+      qrImageData.value = data.qr_image_data || null
+    }
+  } catch (e) {
+    console.error('[PaymentSettings] load error:', e)
+    error.value = e.message || 'Er ging iets mis bij het laden.'
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 }
 
 onMounted(load)

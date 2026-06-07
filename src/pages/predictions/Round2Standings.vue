@@ -40,87 +40,92 @@ async function load(opts = {}) {
   if (!silent) loading.value = true
   error.value = ''
 
-  const [roundRes, teamsRes, predsRes, resultsRes, liveRankRes, liveScoreRes] = await Promise.all([
-    supabase.from('rounds').select('*').eq('nr', 2).single(),
-    supabase.from('teams').select('*').order('group_letter').order('name'),
-    supabase
-      .from('group_predictions')
-      .select('*')
-      .eq('user_id', auth.profile.id),
-    supabase.from('group_results').select('*'),
-    supabase.from('live_group_rankings').select('*').order('group_letter').order('position'),
-    supabase.from('live_r2_scoring').select('*').eq('user_id', auth.profile.id)
-  ])
+  try {
+    const [roundRes, teamsRes, predsRes, resultsRes, liveRankRes, liveScoreRes] = await Promise.all([
+      supabase.from('rounds').select('*').eq('nr', 2).single(),
+      supabase.from('teams').select('*').order('group_letter').order('name'),
+      supabase
+        .from('group_predictions')
+        .select('*')
+        .eq('user_id', auth.profile.id),
+      supabase.from('group_results').select('*'),
+      supabase.from('live_group_rankings').select('*').order('group_letter').order('position'),
+      supabase.from('live_r2_scoring').select('*').eq('user_id', auth.profile.id)
+    ])
 
-  if (roundRes.error) error.value = roundRes.error.message
-  if (teamsRes.error) error.value = teamsRes.error.message
-  if (predsRes.error) error.value = predsRes.error.message
-  if (resultsRes.error) error.value = resultsRes.error.message
+    if (roundRes.error) error.value = roundRes.error.message
+    if (teamsRes.error) error.value = teamsRes.error.message
+    if (predsRes.error) error.value = predsRes.error.message
+    if (resultsRes.error) error.value = resultsRes.error.message
 
-  round.value = roundRes.data
+    round.value = roundRes.data
 
-  const grouped = {}
-  for (const t of teamsRes.data || []) {
-    if (!grouped[t.group_letter]) grouped[t.group_letter] = []
-    grouped[t.group_letter].push(t)
-  }
-  teamsByGroup.value = grouped
+    const grouped = {}
+    for (const t of teamsRes.data || []) {
+      if (!grouped[t.group_letter]) grouped[t.group_letter] = []
+      grouped[t.group_letter].push(t)
+    }
+    teamsByGroup.value = grouped
 
-  const orderMap = {}
-  const statusMap = {}
-  const pointsMap = {}
-  for (const letter of Object.keys(grouped)) {
-    orderMap[letter] = grouped[letter].map((t) => t.id)
-    statusMap[letter] = null
-    pointsMap[letter] = 0
-  }
-  for (const p of predsRes.data || []) {
-    orderMap[p.group_letter] = [p.pos1_team_id, p.pos2_team_id, p.pos3_team_id, p.pos4_team_id]
-    statusMap[p.group_letter] = 'ok'
-    pointsMap[p.group_letter] = p.points_awarded || 0
-  }
+    const orderMap = {}
+    const statusMap = {}
+    const pointsMap = {}
+    for (const letter of Object.keys(grouped)) {
+      orderMap[letter] = grouped[letter].map((t) => t.id)
+      statusMap[letter] = null
+      pointsMap[letter] = 0
+    }
+    for (const p of predsRes.data || []) {
+      orderMap[p.group_letter] = [p.pos1_team_id, p.pos2_team_id, p.pos3_team_id, p.pos4_team_id]
+      statusMap[p.group_letter] = 'ok'
+      pointsMap[p.group_letter] = p.points_awarded || 0
+    }
 
-  if (silent) {
-    // Behoud de lokale (mogelijk net gesleepte / nog-opslaande) volgorde,
-    // zodat een binnenkomende uitslag je handeling niet platwalst.
-    for (const letter of Object.keys(orders.value)) {
-      const st = savedStatus.value[letter]
-      if (st === 'saving' || st === 'error') {
-        orderMap[letter] = orders.value[letter]
-        statusMap[letter] = st
+    if (silent) {
+      // Behoud de lokale (mogelijk net gesleepte / nog-opslaande) volgorde,
+      // zodat een binnenkomende uitslag je handeling niet platwalst.
+      for (const letter of Object.keys(orders.value)) {
+        const st = savedStatus.value[letter]
+        if (st === 'saving' || st === 'error') {
+          orderMap[letter] = orders.value[letter]
+          statusMap[letter] = st
+        }
       }
     }
+
+    orders.value = orderMap
+    savedStatus.value = statusMap
+    groupPoints.value = pointsMap
+
+    const resMap = {}
+    for (const r of resultsRes.data || []) {
+      resMap[r.group_letter] = [r.pos1_team_id, r.pos2_team_id, r.pos3_team_id, r.pos4_team_id]
+    }
+    groupResults.value = resMap
+
+    // Live ranking per poule: positie 1-4 op basis van actuele R1 uitslagen
+    const liveRankMap = {}
+    const liveStatsMap = {}
+    for (const row of liveRankRes.data || []) {
+      if (!liveRankMap[row.group_letter]) liveRankMap[row.group_letter] = [null, null, null, null]
+      liveRankMap[row.group_letter][row.position - 1] = row.team_id
+      liveStatsMap[row.group_letter] = { matchesPlayed: row.played }
+    }
+    liveRankings.value = liveRankMap
+    liveStats.value = liveStatsMap
+
+    // Live punten van mijn R2 voorspelling tegen huidige stand
+    const liveScoreMap = {}
+    for (const row of liveScoreRes.data || []) {
+      liveScoreMap[row.group_letter] = row.live_points
+    }
+    livePoints.value = liveScoreMap
+  } catch (e) {
+    console.error('[Round2Standings] load error:', e)
+    error.value = e.message || 'Er ging iets mis bij het laden.'
+  } finally {
+    if (!silent) loading.value = false
   }
-
-  orders.value = orderMap
-  savedStatus.value = statusMap
-  groupPoints.value = pointsMap
-
-  const resMap = {}
-  for (const r of resultsRes.data || []) {
-    resMap[r.group_letter] = [r.pos1_team_id, r.pos2_team_id, r.pos3_team_id, r.pos4_team_id]
-  }
-  groupResults.value = resMap
-
-  // Live ranking per poule: positie 1-4 op basis van actuele R1 uitslagen
-  const liveRankMap = {}
-  const liveStatsMap = {}
-  for (const row of liveRankRes.data || []) {
-    if (!liveRankMap[row.group_letter]) liveRankMap[row.group_letter] = [null, null, null, null]
-    liveRankMap[row.group_letter][row.position - 1] = row.team_id
-    liveStatsMap[row.group_letter] = { matchesPlayed: row.played }
-  }
-  liveRankings.value = liveRankMap
-  liveStats.value = liveStatsMap
-
-  // Live punten van mijn R2 voorspelling tegen huidige stand
-  const liveScoreMap = {}
-  for (const row of liveScoreRes.data || []) {
-    liveScoreMap[row.group_letter] = row.live_points
-  }
-  livePoints.value = liveScoreMap
-
-  if (!silent) loading.value = false
 }
 
 onMounted(() => {

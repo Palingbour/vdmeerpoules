@@ -44,8 +44,9 @@ const blockedCount = computed(() => {
   ).length
 })
 
-async function load() {
-  loading.value = true
+async function load(opts = {}) {
+  const silent = opts.silent === true
+  if (!silent) loading.value = true
   error.value = ''
 
   try {
@@ -125,16 +126,18 @@ watch(() => props.roundNr, load)
 
 onMounted(() => {
   load()
-  // Realtime: ververs zodra een match of voorspelling verandert
-  // zodat punten direct zichtbaar worden zonder F5
+  // Realtime: ververs bij externe wijzigingen (admin zet uitslag etc.)
+  // Eigen voorspelling-events negeren — die heeft de gebruiker zelf
+  // net gemaakt, geen reload nodig (en voorkomt scroll-jump).
   channel = supabase
     .channel(`knockout-watch-r${props.roundNr}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => load())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => load({ silent: true }))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'match_predictions' }, (payload) => {
-      // Alleen herladen als 't een eigen voorspelling betreft (bespaart calls)
-      if (payload.new?.user_id === auth.profile?.id || payload.old?.user_id === auth.profile?.id) {
-        load()
-      }
+      // Skip eigen voorspellingen — die hebben we zelf net opgeslagen
+      const ownEvent = payload.new?.user_id === auth.profile?.id ||
+                       payload.old?.user_id === auth.profile?.id
+      if (ownEvent) return
+      load({ silent: true })
     })
     .subscribe()
 })

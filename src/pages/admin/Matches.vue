@@ -12,18 +12,24 @@ const saving = ref(false)
 
 async function load() {
   loading.value = true
-  const { data, error: err } = await supabase
-    .from('matches')
-    .select(`
-      *,
-      team_home:teams!matches_team_home_id_fkey(id, name, flag_url),
-      team_away:teams!matches_team_away_id_fkey(id, name, flag_url)
-    `)
-    .order('kickoff_at')
-    .order('match_number')
-  if (err) error.value = err.message
-  matches.value = data || []
-  loading.value = false
+  try {
+    const { data, error: err } = await supabase
+      .from('matches')
+      .select(`
+        *,
+        team_home:teams!matches_team_home_id_fkey(id, name, flag_url),
+        team_away:teams!matches_team_away_id_fkey(id, name, flag_url)
+      `)
+      .order('kickoff_at')
+      .order('match_number')
+    if (err) error.value = err.message
+    matches.value = data || []
+  } catch (e) {
+    console.error('[admin/Matches] load error:', e)
+    error.value = e.message || 'Er ging iets mis bij het laden.'
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(load)

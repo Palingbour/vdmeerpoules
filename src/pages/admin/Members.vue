@@ -13,16 +13,22 @@ const filter = ref('all')
 async function load() {
   loading.value = true
   error.value = ''
-  const { data, error: err } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false })
-  if (err) {
-    error.value = err.message
-  } else {
-    members.value = data
+  try {
+    const { data, error: err } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (err) {
+      error.value = err.message
+    } else {
+      members.value = data
+    }
+  } catch (e) {
+    console.error('[admin/Members] load error:', e)
+    error.value = e.message || 'Er ging iets mis bij het laden.'
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 }
 
 onMounted(load)

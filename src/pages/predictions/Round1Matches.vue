@@ -34,49 +34,54 @@ async function load() {
   loading.value = true
   error.value = ''
 
-  const [roundRes, matchesRes, predsRes] = await Promise.all([
-    supabase.from('rounds').select('*').eq('nr', 1).single(),
-    supabase
-      .from('matches')
-      .select(`
-        id, match_number, kickoff_at, city, stadium,
-        score_home, score_away, status,
-        team_home:teams!matches_team_home_id_fkey(id, name, code, group_letter, flag_url),
-        team_away:teams!matches_team_away_id_fkey(id, name, code, group_letter, flag_url)
-      `)
-      .eq('round_nr', 1)
-      .order('kickoff_at')
-      .order('match_number'),
-    supabase
-      .from('match_predictions')
-      .select('*')
-      .eq('user_id', auth.profile.id)
-  ])
+  try {
+    const [roundRes, matchesRes, predsRes] = await Promise.all([
+      supabase.from('rounds').select('*').eq('nr', 1).single(),
+      supabase
+        .from('matches')
+        .select(`
+          id, match_number, kickoff_at, city, stadium,
+          score_home, score_away, status,
+          team_home:teams!matches_team_home_id_fkey(id, name, code, group_letter, flag_url),
+          team_away:teams!matches_team_away_id_fkey(id, name, code, group_letter, flag_url)
+        `)
+        .eq('round_nr', 1)
+        .order('kickoff_at')
+        .order('match_number'),
+      supabase
+        .from('match_predictions')
+        .select('*')
+        .eq('user_id', auth.profile.id)
+    ])
 
-  if (roundRes.error) error.value = roundRes.error.message
-  if (matchesRes.error) error.value = matchesRes.error.message
-  if (predsRes.error) error.value = predsRes.error.message
+    if (roundRes.error) error.value = roundRes.error.message
+    if (matchesRes.error) error.value = matchesRes.error.message
+    if (predsRes.error) error.value = predsRes.error.message
 
-  round.value = roundRes.data
-  matches.value = matchesRes.data || []
+    round.value = roundRes.data
+    matches.value = matchesRes.data || []
 
-  const map = {}
-  for (const m of matches.value) {
-    map[m.id] = { score_home: '', score_away: '', saved: null, points_awarded: 0 }
-  }
-  for (const p of predsRes.data || []) {
-    if (map[p.match_id]) {
-      map[p.match_id] = {
-        score_home: p.score_home,
-        score_away: p.score_away,
-        saved: 'ok',
-        points_awarded: p.points_awarded || 0
+    const map = {}
+    for (const m of matches.value) {
+      map[m.id] = { score_home: '', score_away: '', saved: null, points_awarded: 0 }
+    }
+    for (const p of predsRes.data || []) {
+      if (map[p.match_id]) {
+        map[p.match_id] = {
+          score_home: p.score_home,
+          score_away: p.score_away,
+          saved: 'ok',
+          points_awarded: p.points_awarded || 0
+        }
       }
     }
+    predictions.value = map
+  } catch (e) {
+    console.error('[Round1Matches] load error:', e)
+    error.value = e.message || 'Er ging iets mis bij het laden.'
+  } finally {
+    loading.value = false
   }
-  predictions.value = map
-
-  loading.value = false
 }
 
 onMounted(load)

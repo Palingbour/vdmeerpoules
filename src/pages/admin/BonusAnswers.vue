@@ -11,19 +11,25 @@ const error = ref('')
 
 async function load() {
   loading.value = true
-  const [qRes, tRes] = await Promise.all([
-    supabase.from('bonus_questions').select('*').order('display_order'),
-    supabase.from('teams').select('id, name, group_letter').order('name')
-  ])
-  if (qRes.error) error.value = qRes.error.message
-  if (tRes.error) error.value = tRes.error.message
+  try {
+    const [qRes, tRes] = await Promise.all([
+      supabase.from('bonus_questions').select('*').order('display_order'),
+      supabase.from('teams').select('id, name, group_letter').order('name')
+    ])
+    if (qRes.error) error.value = qRes.error.message
+    if (tRes.error) error.value = tRes.error.message
 
-  questions.value = qRes.data || []
-  teams.value = tRes.data || []
-  for (const q of questions.value) {
-    answers.value[q.id] = q.correct_answer ?? ''
+    questions.value = qRes.data || []
+    teams.value = tRes.data || []
+    for (const q of questions.value) {
+      answers.value[q.id] = q.correct_answer ?? ''
+    }
+  } catch (e) {
+    console.error('[BonusAnswers] load error:', e)
+    error.value = e.message || 'Er ging iets mis bij het laden.'
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 }
 
 onMounted(load)

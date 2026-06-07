@@ -31,42 +31,47 @@ async function load() {
   loading.value = true
   error.value = ''
 
-  const [roundRes, questionsRes, teamsRes, predsRes] = await Promise.all([
-    supabase.from('rounds').select('*').eq('nr', 8).single(),
-    supabase.from('bonus_questions').select('*').order('display_order'),
-    supabase.from('teams').select('id, name, flag_url, group_letter').order('name'),
-    supabase
-      .from('bonus_predictions')
-      .select('*')
-      .eq('user_id', auth.profile.id)
-  ])
+  try {
+    const [roundRes, questionsRes, teamsRes, predsRes] = await Promise.all([
+      supabase.from('rounds').select('*').eq('nr', 8).single(),
+      supabase.from('bonus_questions').select('*').order('display_order'),
+      supabase.from('teams').select('id, name, flag_url, group_letter').order('name'),
+      supabase
+        .from('bonus_predictions')
+        .select('*')
+        .eq('user_id', auth.profile.id)
+    ])
 
-  if (roundRes.error) error.value = roundRes.error.message
-  if (questionsRes.error) error.value = questionsRes.error.message
-  if (predsRes.error) error.value = predsRes.error.message
+    if (roundRes.error) error.value = roundRes.error.message
+    if (questionsRes.error) error.value = questionsRes.error.message
+    if (predsRes.error) error.value = predsRes.error.message
 
-  round.value = roundRes.data
-  questions.value = questionsRes.data || []
-  teams.value = teamsRes.data || []
+    round.value = roundRes.data
+    questions.value = questionsRes.data || []
+    teams.value = teamsRes.data || []
 
-  const ansMap = {}
-  const statusMap = {}
-  const pointsMap = {}
-  for (const q of questions.value) {
-    ansMap[q.id] = ''
-    statusMap[q.id] = null
-    pointsMap[q.id] = 0
+    const ansMap = {}
+    const statusMap = {}
+    const pointsMap = {}
+    for (const q of questions.value) {
+      ansMap[q.id] = ''
+      statusMap[q.id] = null
+      pointsMap[q.id] = 0
+    }
+    for (const p of predsRes.data || []) {
+      ansMap[p.question_id] = p.answer
+      statusMap[p.question_id] = 'ok'
+      pointsMap[p.question_id] = p.points_awarded || 0
+    }
+    answers.value = ansMap
+    savedStatus.value = statusMap
+    questionPoints.value = pointsMap
+  } catch (e) {
+    console.error('[Round8Bonus] load error:', e)
+    error.value = e.message || 'Er ging iets mis bij het laden.'
+  } finally {
+    loading.value = false
   }
-  for (const p of predsRes.data || []) {
-    ansMap[p.question_id] = p.answer
-    statusMap[p.question_id] = 'ok'
-    pointsMap[p.question_id] = p.points_awarded || 0
-  }
-  answers.value = ansMap
-  savedStatus.value = statusMap
-  questionPoints.value = pointsMap
-
-  loading.value = false
 }
 
 onMounted(load)

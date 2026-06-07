@@ -14,35 +14,40 @@ async function load() {
   loading.value = true
   error.value = ''
 
-  const [teamsRes, resultsRes] = await Promise.all([
-    supabase.from('teams').select('*').order('group_letter').order('name'),
-    supabase.from('group_results').select('*')
-  ])
+  try {
+    const [teamsRes, resultsRes] = await Promise.all([
+      supabase.from('teams').select('*').order('group_letter').order('name'),
+      supabase.from('group_results').select('*')
+    ])
 
-  if (teamsRes.error) error.value = teamsRes.error.message
-  if (resultsRes.error) error.value = resultsRes.error.message
+    if (teamsRes.error) error.value = teamsRes.error.message
+    if (resultsRes.error) error.value = resultsRes.error.message
 
-  const grouped = {}
-  for (const t of teamsRes.data || []) {
-    if (!grouped[t.group_letter]) grouped[t.group_letter] = []
-    grouped[t.group_letter].push(t)
+    const grouped = {}
+    for (const t of teamsRes.data || []) {
+      if (!grouped[t.group_letter]) grouped[t.group_letter] = []
+      grouped[t.group_letter].push(t)
+    }
+    teamsByGroup.value = grouped
+
+    const orderMap = {}
+    const hasMap = {}
+    for (const letter of Object.keys(grouped)) {
+      orderMap[letter] = grouped[letter].map((t) => t.id)
+      hasMap[letter] = false
+    }
+    for (const r of resultsRes.data || []) {
+      orderMap[r.group_letter] = [r.pos1_team_id, r.pos2_team_id, r.pos3_team_id, r.pos4_team_id]
+      hasMap[r.group_letter] = true
+    }
+    orders.value = orderMap
+    hasResult.value = hasMap
+  } catch (e) {
+    console.error('[GroupResults] load error:', e)
+    error.value = e.message || 'Er ging iets mis bij het laden.'
+  } finally {
+    loading.value = false
   }
-  teamsByGroup.value = grouped
-
-  const orderMap = {}
-  const hasMap = {}
-  for (const letter of Object.keys(grouped)) {
-    orderMap[letter] = grouped[letter].map((t) => t.id)
-    hasMap[letter] = false
-  }
-  for (const r of resultsRes.data || []) {
-    orderMap[r.group_letter] = [r.pos1_team_id, r.pos2_team_id, r.pos3_team_id, r.pos4_team_id]
-    hasMap[r.group_letter] = true
-  }
-  orders.value = orderMap
-  hasResult.value = hasMap
-
-  loading.value = false
 }
 
 onMounted(load)
