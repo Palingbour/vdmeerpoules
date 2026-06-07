@@ -19,12 +19,19 @@ const allPriorMatches = ref([])     // alle matches uit eerdere rondes, voor dep
 const predictions = ref({})       // match_id -> { pred_home, pred_away, score_home, score_away, saved, points_awarded }
 const loading = ref(true)
 const error = ref('')
+const now = ref(new Date())
 const saveTimers = {}
 let channel = null
+let nowTicker = null
 
-const deadlinePassed = computed(() => {
-  if (!round.value?.deadline) return false
-  return new Date(round.value.deadline) < new Date()
+// Per-wedstrijd deadline check
+function isMatchDeadlinePassed(m) {
+  if (!m?.prediction_deadline_at) return false
+  return new Date(m.prediction_deadline_at) < now.value
+}
+
+const openCount = computed(() => {
+  return matches.value.filter((m) => !isMatchDeadlinePassed(m)).length
 })
 
 const filledCount = computed(() => {
@@ -56,6 +63,7 @@ async function load(opts = {}) {
         .from('matches')
         .select(`
           id, match_number, kickoff_at, city, stadium,
+          prediction_deadline_at,
           team_home_placeholder, team_away_placeholder,
           slot_home_type, slot_home_groups, slot_home_match_dep,
           slot_away_type, slot_away_groups, slot_away_match_dep,
@@ -75,7 +83,7 @@ async function load(opts = {}) {
       supabase.from('teams').select('*').order('group_letter').order('name'),
       supabase
         .from('match_predictions')
-        .select('*')
+        .select('match_id, pred_team_home_id, pred_team_away_id, pred_home_via_match, pred_home_via_side, pred_away_via_match, pred_away_via_side, score_home, score_away, points_awarded')
         .eq('user_id', auth.profile.id)
     ])
 
@@ -92,8 +100,8 @@ async function load(opts = {}) {
     const map = {}
     for (const m of matches.value) {
       map[m.id] = {
-        pred_home: null,
-        pred_away: null,
+        pred_home: '',
+        pred_away: '',
         score_home: '',
         score_away: '',
         saved: null,
@@ -103,8 +111,8 @@ async function load(opts = {}) {
     for (const p of predsRes.data || []) {
       if (map[p.match_id]) {
         map[p.match_id] = {
-          pred_home: p.pred_team_home_id,
-          pred_away: p.pred_team_away_id,
+          pred_home: buildPredValue(p, 'home'),
+          pred_away: buildPredValue(p, 'away'),
           score_home: p.score_home ?? '',
           score_away: p.score_away ?? '',
           saved: 'ok',
@@ -126,6 +134,8 @@ watch(() => props.roundNr, load)
 
 onMounted(() => {
   load()
+  // Tikt elke minuut zodat per-wedstrijd deadlines live verlopen
+  nowTicker = setInterval(() => { now.value = new Date() }, 30000)
   // Realtime: ververs bij externe wijzigingen (admin zet uitslag etc.)
   // Eigen voorspelling-events negeren — die heeft de gebruiker zelf
   // net gemaakt, geen reload nodig (en voorkomt scroll-jump).
@@ -144,6 +154,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (channel) supabase.removeChannel(channel)
+  if (nowTicker) clearInterval(nowTicker)
 })
 
 function getOptions(slotType, slotGroups, slotMatchDep) {
@@ -174,15 +185,85 @@ function getDepMatchNumber(slotMatchDep) {
   return depMatch?.match_number || null
 }
 
+// R3 group slots blijven open zolang ronde-deadline niet verlopen.
+// R4-R7 match_winner/loser slots: geblokkeerd als dep-match nog GEEN
+// enkele team heeft (vóór groepsfase / vóór vorige KO-ronde).
 function isSlotBlocked(slotType, slotMatchDep) {
   if (slotType !== 'match_winner' && slotType !== 'match_loser') return false
   if (!slotMatchDep) return true
   const depMatch = allPriorMatches.value.find(m => m.id === slotMatchDep)
-  return !depMatch || !depMatch.team_home_id || !depMatch.team_away_id
+  if (!depMatch) return true
+  // Open zodra dep-match minstens 1 team-slot gevuld heeft
+  return !depMatch.team_home_id && !depMatch.team_away_id
 }
 
 function isSlotBonus(slotType) {
   return slotType === 'third_place'
+}
+
+// Label voor placeholder optie: "Winnaar A", "Runner-up B", "Beste 3"
+function depSlotLabel(depMatch, side) {
+  const slotType = side === 'home' ? depMatch.slot_home_type : depMatch.slot_away_type
+  const slotGroups = side === 'home' ? depMatch.slot_home_groups : depMatch.slot_away_groups
+  if (slotType === 'group_winner' && slotGroups?.length) return `Winnaar ${slotGroups[0]}`
+  if (slotType === 'group_runner' && slotGroups?.length) return `Runner-up ${slotGroups[0]}`
+  if (slotType === 'third_place') return 'Beste 3'
+  // Fallback: placeholder text uit de DB
+  return (side === 'home' ? depMatch.team_home_placeholder : depMatch.team_away_placeholder) || 'Onbekend'
+}
+
+// Opties voor R4-R7 slot: concrete team(s) + placeholders voor lege slots in dep
+function getKoSlotOptions(slotMatchDep) {
+  if (!slotMatchDep) return []
+  const depMatch = allPriorMatches.value.find(m => m.id === slotMatchDep)
+  if (!depMatch) return []
+
+  const opts = []
+
+  // Home van dep match
+  if (depMatch.team_home_id) {
+    const t = teams.value.find(t => t.id === depMatch.team_home_id)
+    if (t) opts.push({ value: `team-${t.id}`, label: t.name })
+  } else {
+    opts.push({
+      value: `via-${depMatch.id}-home`,
+      label: `${depSlotLabel(depMatch, 'home')} (uit M${depMatch.match_number})`
+    })
+  }
+
+  // Away van dep match
+  if (depMatch.team_away_id) {
+    const t = teams.value.find(t => t.id === depMatch.team_away_id)
+    if (t) opts.push({ value: `team-${t.id}`, label: t.name })
+  } else {
+    opts.push({
+      value: `via-${depMatch.id}-away`,
+      label: `${depSlotLabel(depMatch, 'away')} (uit M${depMatch.match_number})`
+    })
+  }
+
+  return opts
+}
+
+// Build value-string voor v-model uit DB row (per slot)
+function buildPredValue(row, side) {
+  const teamId = side === 'home' ? row.pred_team_home_id : row.pred_team_away_id
+  const viaMatch = side === 'home' ? row.pred_home_via_match : row.pred_away_via_match
+  const viaSide = side === 'home' ? row.pred_home_via_side : row.pred_away_via_side
+  if (teamId) return `team-${teamId}`
+  if (viaMatch && viaSide) return `via-${viaMatch}-${viaSide}`
+  return ''
+}
+
+// Parse value-string terug naar DB-velden
+function parsePredValue(val) {
+  if (!val) return { teamId: null, viaMatch: null, viaSide: null }
+  if (val.startsWith('team-')) return { teamId: parseInt(val.slice(5)), viaMatch: null, viaSide: null }
+  if (val.startsWith('via-')) {
+    const parts = val.split('-')  // ['via', matchId, side]
+    return { teamId: null, viaMatch: parseInt(parts[1]), viaSide: parts[2] }
+  }
+  return { teamId: null, viaMatch: null, viaSide: null }
 }
 
 function fmtDate(d) {
@@ -211,6 +292,12 @@ function onChange(matchId) {
   const p = predictions.value[matchId]
   if (!m || !p) return
 
+  // Per-wedstrijd deadline verlopen? Niet meer opslaan
+  if (isMatchDeadlinePassed(m)) {
+    p.saved = null
+    return
+  }
+
   // Bonus slots vereisen géén team-voorspelling
   const homeOK = isSlotBonus(m.slot_home_type) || p.pred_home
   const awayOK = isSlotBonus(m.slot_away_type) || p.pred_away
@@ -232,15 +319,29 @@ function onChange(matchId) {
 }
 
 async function savePrediction(matchId) {
+  const m = matches.value.find(x => x.id === matchId)
   const p = predictions.value[matchId]
+  if (!m || !p) return
+
+  // Parse pred-strings naar concrete team-ids of via-references
+  // Bonus slots blijven volledig null (telt automatisch goed)
+  const homeBonus = isSlotBonus(m.slot_home_type)
+  const awayBonus = isSlotBonus(m.slot_away_type)
+  const homeData = homeBonus ? { teamId: null, viaMatch: null, viaSide: null } : parsePredValue(p.pred_home)
+  const awayData = awayBonus ? { teamId: null, viaMatch: null, viaSide: null } : parsePredValue(p.pred_away)
+
   const { error: err } = await supabase
     .from('match_predictions')
     .upsert(
       {
         user_id: auth.profile.id,
         match_id: matchId,
-        pred_team_home_id: p.pred_home,
-        pred_team_away_id: p.pred_away,
+        pred_team_home_id: homeData.teamId,
+        pred_team_away_id: awayData.teamId,
+        pred_home_via_match: homeData.viaMatch,
+        pred_home_via_side: homeData.viaSide,
+        pred_away_via_match: awayData.viaMatch,
+        pred_away_via_side: awayData.viaSide,
         score_home: parseInt(p.score_home),
         score_away: parseInt(p.score_away)
       },
@@ -275,7 +376,7 @@ function getScoreClass(m) {
           <span v-if="blockedCount > 0" class="muted"> · {{ blockedCount }} wachten op eerdere uitslagen</span>
         </div>
         <div class="muted">
-          Deadline: <span class="mono">{{ fmtDeadline(round?.deadline) }}</span>
+          <strong>{{ openCount }}</strong> nog open
         </div>
       </div>
       <p class="muted" style="margin: var(--s-3) 0 0; font-size: 0.9375rem">
@@ -283,10 +384,10 @@ function getScoreClass(m) {
         Per goed land 5 pt, juiste winnaar 2 pt, exacte uitslag 5 pt extra.
         <strong>Alles goed = 20 pt vlak.</strong>
       </p>
-    </div>
-
-    <div v-if="deadlinePassed" class="alert alert-warn">
-      De deadline is verstreken. Voorspellingen zijn vastgezet.
+      <p class="muted" style="margin: var(--s-2) 0 0; font-size: 0.8125rem; font-style: italic">
+        Elke wedstrijd heeft een eigen deadline — vlak voordat de eerste
+        voorgaande wedstrijd start. Vul op tijd in!
+      </p>
     </div>
 
     <div v-if="error" class="alert alert-error">{{ error }}</div>
@@ -308,6 +409,12 @@ function getScoreClass(m) {
           <span class="ko-num mono">#{{ m.match_number }}</span>
           <span class="ko-date mono">{{ fmtDate(m.kickoff_at) }}</span>
           <span class="ko-city muted">{{ m.city }}</span>
+          <span v-if="m.prediction_deadline_at && !isMatchDeadlinePassed(m)" class="ko-deadline mono">
+            sluit: {{ fmtDate(m.prediction_deadline_at) }}
+          </span>
+          <span v-if="isMatchDeadlinePassed(m) && m.status !== 'finished'" class="ko-closed mono">
+            🔒 gesloten
+          </span>
           <span v-if="m.status === 'finished' && m.team_home && m.team_away" class="ko-finished mono">
             gespeeld: {{ m.team_home.name }} {{ m.score_home }}–{{ m.score_away }} {{ m.team_away.name }}
           </span>
@@ -330,24 +437,42 @@ function getScoreClass(m) {
               🎁 Bonus — automatisch goed
             </div>
 
-            <!-- Geblokkeerd: wacht op vorige wedstrijd -->
+            <!-- Geblokkeerd: dep-match heeft nog geen teams (R4-R7 vroeg) -->
             <div v-else-if="isSlotBlocked(m.slot_home_type, m.slot_home_match_dep)" class="blocked-tile">
-              ⏳ Wacht op uitslag wedstrijd #{{ getDepMatchNumber(m.slot_home_match_dep) }}
+              ⏳ Wacht op uitslag groepsfase
             </div>
 
-            <!-- Normaal: dropdown -->
+            <!-- R4-R7: dropdown met concrete teams + placeholders -->
+            <select
+              v-else-if="m.slot_home_type === 'match_winner' || m.slot_home_type === 'match_loser'"
+              v-model="predictions[m.id].pred_home"
+              @change="onChange(m.id)"
+              :disabled="isMatchDeadlinePassed(m)"
+              class="team-select"
+            >
+              <option value="">— kies team —</option>
+              <option
+                v-for="opt in getKoSlotOptions(m.slot_home_match_dep)"
+                :key="opt.value"
+                :value="opt.value"
+              >
+                {{ opt.label }}
+              </option>
+            </select>
+
+            <!-- R3 group-slot: dropdown met 4 teams uit poule -->
             <select
               v-else
               v-model="predictions[m.id].pred_home"
               @change="onChange(m.id)"
-              :disabled="deadlinePassed"
+              :disabled="isMatchDeadlinePassed(m)"
               class="team-select"
             >
-              <option :value="null">— kies land —</option>
+              <option value="">— kies land —</option>
               <option
                 v-for="t in getOptions(m.slot_home_type, m.slot_home_groups, m.slot_home_match_dep)"
                 :key="t.id"
-                :value="t.id"
+                :value="`team-${t.id}`"
               >
                 {{ t.name }}<template v-if="t.group_letter"> ({{ t.group_letter }})</template>
               </option>
@@ -362,7 +487,7 @@ function getScoreClass(m) {
               max="20"
               v-model="predictions[m.id].score_home"
               @input="onChange(m.id)"
-              :disabled="deadlinePassed || isSlotBlocked(m.slot_home_type, m.slot_home_match_dep) || isSlotBlocked(m.slot_away_type, m.slot_away_match_dep)"
+              :disabled="isMatchDeadlinePassed(m) || isSlotBlocked(m.slot_home_type, m.slot_home_match_dep) || isSlotBlocked(m.slot_away_type, m.slot_away_match_dep)"
               class="score-box"
               inputmode="numeric"
               placeholder="?"
@@ -374,7 +499,7 @@ function getScoreClass(m) {
               max="20"
               v-model="predictions[m.id].score_away"
               @input="onChange(m.id)"
-              :disabled="deadlinePassed || isSlotBlocked(m.slot_home_type, m.slot_home_match_dep) || isSlotBlocked(m.slot_away_type, m.slot_away_match_dep)"
+              :disabled="isMatchDeadlinePassed(m) || isSlotBlocked(m.slot_home_type, m.slot_home_match_dep) || isSlotBlocked(m.slot_away_type, m.slot_away_match_dep)"
               class="score-box"
               inputmode="numeric"
               placeholder="?"
@@ -390,21 +515,40 @@ function getScoreClass(m) {
             </div>
 
             <div v-else-if="isSlotBlocked(m.slot_away_type, m.slot_away_match_dep)" class="blocked-tile">
-              ⏳ Wacht op uitslag wedstrijd #{{ getDepMatchNumber(m.slot_away_match_dep) }}
+              ⏳ Wacht op uitslag groepsfase
             </div>
 
+            <!-- R4-R7: dropdown met concrete teams + placeholders -->
+            <select
+              v-else-if="m.slot_away_type === 'match_winner' || m.slot_away_type === 'match_loser'"
+              v-model="predictions[m.id].pred_away"
+              @change="onChange(m.id)"
+              :disabled="isMatchDeadlinePassed(m)"
+              class="team-select"
+            >
+              <option value="">— kies team —</option>
+              <option
+                v-for="opt in getKoSlotOptions(m.slot_away_match_dep)"
+                :key="opt.value"
+                :value="opt.value"
+              >
+                {{ opt.label }}
+              </option>
+            </select>
+
+            <!-- R3 group-slot -->
             <select
               v-else
               v-model="predictions[m.id].pred_away"
               @change="onChange(m.id)"
-              :disabled="deadlinePassed"
+              :disabled="isMatchDeadlinePassed(m)"
               class="team-select"
             >
-              <option :value="null">— kies land —</option>
+              <option value="">— kies land —</option>
               <option
                 v-for="t in getOptions(m.slot_away_type, m.slot_away_groups, m.slot_away_match_dep)"
                 :key="t.id"
-                :value="t.id"
+                :value="`team-${t.id}`"
               >
                 {{ t.name }}<template v-if="t.group_letter"> ({{ t.group_letter }})</template>
               </option>
@@ -461,6 +605,23 @@ function getScoreClass(m) {
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--ink-soft);
+}
+.ko-deadline {
+  background: rgba(212, 160, 23, 0.12);
+  color: #8a6b18;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border: 1px solid rgba(212, 160, 23, 0.25);
+}
+.ko-closed {
+  background: rgba(120, 120, 120, 0.12);
+  color: var(--ink-mute);
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  font-size: 0.6875rem;
+  font-weight: 600;
 }
 .points-badge {
   margin-left: auto;
