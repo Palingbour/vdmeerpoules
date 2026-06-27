@@ -86,7 +86,7 @@ async function load(opts = {}) {
       // Alle matches uit prior rondes voor dep-lookups
       supabase
         .from('matches')
-        .select('id, match_number, team_home_id, team_away_id, status, score_home, score_away')
+        .select('id, match_number, team_home_id, team_away_id, status, score_home, score_away, slot_home_type, slot_home_groups, slot_away_type, slot_away_groups, team_home_placeholder, team_away_placeholder')
         .lt('round_nr', props.roundNr),
       supabase.from('teams').select('*').order('group_letter').order('name'),
       supabase
@@ -209,15 +209,18 @@ function isSlotBonus(slotType) {
   return slotType === 'third_place'
 }
 
-// Label voor placeholder optie: "Winnaar A", "Runner-up B", "Beste 3"
+// Label voor placeholder optie: gebruikt bij voorkeur de DB placeholder
+// ("Winnaar J", "Nr. 3 Poule C/E/F/H/I", etc.) en valt anders terug op
+// het slot-type
 function depSlotLabel(depMatch, side) {
+  const placeholder = side === 'home' ? depMatch.team_home_placeholder : depMatch.team_away_placeholder
+  if (placeholder) return placeholder
   const slotType = side === 'home' ? depMatch.slot_home_type : depMatch.slot_away_type
   const slotGroups = side === 'home' ? depMatch.slot_home_groups : depMatch.slot_away_groups
   if (slotType === 'group_winner' && slotGroups?.length) return `Winnaar ${slotGroups[0]}`
   if (slotType === 'group_runner' && slotGroups?.length) return `Runner-up ${slotGroups[0]}`
-  if (slotType === 'third_place') return 'Beste 3'
-  // Fallback: placeholder text uit de DB
-  return (side === 'home' ? depMatch.team_home_placeholder : depMatch.team_away_placeholder) || 'Onbekend'
+  if (slotType === 'third_place') return 'Nr. 3'
+  return 'Onbekend'
 }
 
 // Opties voor R4-R7 slot: concrete team(s) + placeholders voor lege slots in dep
