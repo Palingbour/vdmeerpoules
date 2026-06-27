@@ -30,6 +30,14 @@ function isMatchDeadlinePassed(m) {
   return new Date(m.prediction_deadline_at) < now.value
 }
 
+// Teamkeuze locked check.
+// Voor R3 staan teamkeuzes vast vanaf 11 juni — alleen scores aanpasbaar.
+// Voor R4-R7 volgt het de per-match deadline.
+function isTeamLocked(m) {
+  if (props.roundNr === 3) return true
+  return isMatchDeadlinePassed(m)
+}
+
 const openCount = computed(() => {
   return matches.value.filter((m) => !isMatchDeadlinePassed(m)).length
 })
@@ -388,6 +396,11 @@ function getScoreClass(m) {
         Elke wedstrijd heeft een eigen deadline — vlak voordat de eerste
         voorgaande wedstrijd start. Vul op tijd in!
       </p>
+      <div v-if="roundNr === 3" class="r3-note">
+        <strong>⚠️ Schema bijgewerkt naar FIFA-bracket.</strong>
+        Je teamkeuzes zijn overgenomen en staan vast sinds 11 juni. Je kunt
+        nog wel je <strong>scores aanpassen</strong> tot zondag 28 juni 20:00.
+      </div>
     </div>
 
     <div v-if="error" class="alert alert-error">{{ error }}</div>
@@ -447,7 +460,7 @@ function getScoreClass(m) {
               v-else-if="m.slot_home_type === 'match_winner' || m.slot_home_type === 'match_loser'"
               v-model="predictions[m.id].pred_home"
               @change="onChange(m.id)"
-              :disabled="isMatchDeadlinePassed(m)"
+              :disabled="isTeamLocked(m)"
               class="team-select"
             >
               <option value="">— kies team —</option>
@@ -465,7 +478,7 @@ function getScoreClass(m) {
               v-else
               v-model="predictions[m.id].pred_home"
               @change="onChange(m.id)"
-              :disabled="isMatchDeadlinePassed(m)"
+              :disabled="isTeamLocked(m)"
               class="team-select"
             >
               <option value="">— kies land —</option>
@@ -523,7 +536,7 @@ function getScoreClass(m) {
               v-else-if="m.slot_away_type === 'match_winner' || m.slot_away_type === 'match_loser'"
               v-model="predictions[m.id].pred_away"
               @change="onChange(m.id)"
-              :disabled="isMatchDeadlinePassed(m)"
+              :disabled="isTeamLocked(m)"
               class="team-select"
             >
               <option value="">— kies team —</option>
@@ -541,7 +554,7 @@ function getScoreClass(m) {
               v-else
               v-model="predictions[m.id].pred_away"
               @change="onChange(m.id)"
-              :disabled="isMatchDeadlinePassed(m)"
+              :disabled="isTeamLocked(m)"
               class="team-select"
             >
               <option value="">— kies land —</option>
@@ -614,6 +627,17 @@ function getScoreClass(m) {
   font-size: 0.6875rem;
   font-weight: 600;
   border: 1px solid rgba(212, 160, 23, 0.25);
+}
+
+.r3-note {
+  margin-top: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: rgba(212, 160, 23, 0.12);
+  border-left: 4px solid #d4a017;
+  border-radius: var(--r-sm);
+  font-size: 0.875rem;
+  color: var(--ink);
+  line-height: 1.45;
 }
 .ko-closed {
   background: rgba(120, 120, 120, 0.12);
