@@ -57,7 +57,8 @@ onMounted(async () => {
         <div class="rule-tag mono">R3 — R7</div>
         <h3>Knock-out rondes</h3>
         <p>16e finales, 8e finales, kwartfinales, halve finales, finale
-        en troostfinale. Voorspel per wedstrijd de twee landen + de uitslag.</p>
+        en troostfinale. Voorspel per wedstrijd de twee landen + de uitslag
+        <strong>na 90 minuten</strong>.</p>
         <ul class="scoring">
           <li><strong>5 pt</strong> per goed voorspeld land (max 10 voor 2 landen)</li>
           <li><strong>2 pt</strong> als je de winnaar correct hebt</li>
@@ -65,8 +66,10 @@ onMounted(async () => {
           <li><strong>20 pt</strong> als je <em>alles</em> goed hebt: beide landen + exacte uitslag</li>
         </ul>
         <p class="hint">
-          Sommige plekken in de 16e finales worden automatisch goed gerekend
-          ("beste 3 cadeau"), zo verdient iedereen daar wat punten.
+          Verlenging en strafschoppen tellen <strong>niet</strong> mee voor de scoring —
+          alleen de stand na 90 minuten. Wel telt het officiële doorgangsteam mee voor
+          de volgende ronde. Sommige plekken in de 16e finales worden automatisch goed
+          gerekend ("beste 3 cadeau"), zo verdient iedereen daar wat punten.
         </p>
       </div>
 
