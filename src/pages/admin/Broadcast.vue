@@ -80,9 +80,28 @@ function onRoundInsert(ev) {
 
 const medals = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
+// Converteer een ruwe textarea-tekst naar nette HTML voor de mail.
+// - Enkele newline → <br>
+// - Lege regel (dubbele newline) → nieuwe <p> alinea
+// - **vet** → <strong>, *cursief* → <em>
+// - [tekst](url) → <a href>
+// Bestaande HTML-tags blijven ongemoeid, dus <p>, <strong>, etc. kan ook direct.
+function formatBodyHtml(raw) {
+  if (!raw) return ''
+  let s = raw
+  s = s.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>')
+  s = s.replace(/(?<![*\w])\*([^*\n]+?)\*(?![*\w])/g, '<em>$1</em>')
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" style="color:#b8861a">$1</a>')
+  const paras = s.split(/\n\s*\n/).map(p => {
+    const inner = p.replace(/\n/g, '<br>')
+    return inner.trim() ? `<p style="margin:0 0 12px">${inner}</p>` : ''
+  }).filter(Boolean)
+  return paras.join('')
+}
+
 // Preview: zet variabelen om naar HTML zoals de mail 'm toont (met jouw eigen data)
 const previewHtml = computed(() => {
-  let html = body.value || ''
+  let html = formatBodyHtml(body.value)
   html = html.replace(/\{voornaam\}/g, myFirstName.value)
 
   const standText = myStanding.value
@@ -124,7 +143,7 @@ async function send() {
     const { data, error: err } = await supabase.rpc('send_broadcast', {
       p_subject: subject.value,
       p_heading: heading.value || subject.value,
-      p_body_html: body.value,
+      p_body_html: formatBodyHtml(body.value),
       p_include_standings: includeStandings.value
     })
     if (err) throw err
@@ -183,12 +202,15 @@ async function send() {
           ref="bodyRef"
           v-model="body"
           rows="8"
-          placeholder="Schrijf hier je bericht. Gebruik {voornaam} voor een persoonlijke aanhef en {top5} om de actuele top 5 in te voegen. HTML zoals <p> en <strong> mag."
+          placeholder="Schrijf hier je bericht. Lege regel = nieuwe alinea, **vet**, *cursief*, [link tekst](https://url). Gebruik {voornaam} voor een persoonlijke aanhef en {top5} om de actuele top 5 in te voegen."
         ></textarea>
         <span class="hint">
-          <code>{voornaam}</code> en <code>{mijn_stand}</code> ("op plek X van Y met Z punten")
-          worden per persoon ingevuld. <code>{mijn_punten_rX}</code> toont iemands punten in die
-          ronde. <code>{top5}</code> voegt de actuele top 5 in (momentopname). Eenvoudige HTML mag.
+          <strong>Opmaak:</strong> enter = nieuwe regel, lege regel = nieuwe alinea,
+          <code>**vet**</code>, <code>*cursief*</code>, <code>[tekst](url)</code> voor links.<br>
+          <strong>Variabelen:</strong> <code>{voornaam}</code> en <code>{mijn_stand}</code>
+          ("op plek X van Y met Z punten") worden per persoon ingevuld.
+          <code>{mijn_punten_rX}</code> toont iemands punten in die ronde.
+          <code>{top5}</code> voegt de actuele top 5 in (momentopname).
         </span>
       </div>
 
