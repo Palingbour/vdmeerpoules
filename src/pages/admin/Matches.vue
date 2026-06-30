@@ -61,6 +61,7 @@ function startEdit(m) {
     score_home: m.score_home ?? '',
     score_away: m.score_away ?? '',
     winner_team_id: m.winner_team_id || null,
+    manual_override: m.manual_override || false,
     status: m.status
   }
 }
@@ -120,6 +121,17 @@ const awayTeamOptions = computed(() => {
 async function save() {
   saving.value = true
   error.value = ''
+  // Auto-zet manual_override op true wanneer admin een score/winnaar
+  // ingreep doet bij KO match, tenzij admin expliciet uitvinkt.
+  const orig = matches.value.find(x => x.id === editing.value)
+  const scoreChanged = (
+    (editForm.value.score_home === '' ? null : parseInt(editForm.value.score_home)) !== orig?.score_home ||
+    (editForm.value.score_away === '' ? null : parseInt(editForm.value.score_away)) !== orig?.score_away ||
+    (editForm.value.winner_team_id || null) !== (orig?.winner_team_id || null)
+  )
+  const isKo = orig && orig.round_nr >= 3
+  const autoFlag = isKo && scoreChanged ? true : editForm.value.manual_override
+
   const patch = {
     kickoff_at: new Date(editForm.value.kickoff_at).toISOString(),
     city: editForm.value.city,
@@ -129,6 +141,7 @@ async function save() {
     score_home: editForm.value.score_home === '' ? null : parseInt(editForm.value.score_home),
     score_away: editForm.value.score_away === '' ? null : parseInt(editForm.value.score_away),
     winner_team_id: editForm.value.winner_team_id || null,
+    manual_override: autoFlag,
     status: editForm.value.status
   }
   const { error: err } = await supabase
@@ -275,6 +288,13 @@ function fmtDate(iso) {
                         {{ teams.find(t => t.id === editForm.team_away_id)?.name || 'Uit team' }} wint
                       </option>
                     </select>
+                  </div>
+                  <div class="field" style="margin: 0; grid-column: span 2"
+                       v-if="editingMatch && editingMatch.round_nr >= 3">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer">
+                      <input type="checkbox" v-model="editForm.manual_override" style="width:auto" />
+                      <span>Beheerder uitslag <span style="opacity:.7; font-weight: normal">(overschrijft auto-sync; uitvinken om FDO sync weer toe te laten)</span></span>
+                    </label>
                   </div>
                   <div class="field" style="margin: 0">
                     <label>Status</label>
