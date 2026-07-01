@@ -25,17 +25,27 @@ let channel = null
 let nowTicker = null
 
 // Per-wedstrijd deadline check
+// Score-deadline: 1 uur voor kickoff. Bepaalt of score-invulling nog open is.
 function isMatchDeadlinePassed(m) {
+  if (!m?.kickoff_at) return false
+  const oneHourBefore = new Date(new Date(m.kickoff_at).getTime() - 60 * 60 * 1000)
+  return oneHourBefore < now.value
+}
+
+// Team-deadline: het originele prediction_deadline_at (1u voor eerste dep match).
+// Wanneer die is gepasseerd staan land-keuzes vast.
+function isTeamDeadlinePassed(m) {
   if (!m?.prediction_deadline_at) return false
   return new Date(m.prediction_deadline_at) < now.value
 }
 
 // Teamkeuze locked check.
 // Voor R3 staan teamkeuzes vast vanaf 11 juni — alleen scores aanpasbaar.
-// Voor R4-R7 volgt het de per-match deadline.
+// Voor R4-R7 volgen team-keuzes hun eigen team-deadline; scores blijven
+// open tot 1u voor kickoff.
 function isTeamLocked(m) {
   if (props.roundNr === 3) return true
-  return isMatchDeadlinePassed(m)
+  return isTeamDeadlinePassed(m)
 }
 
 const openCount = computed(() => {
@@ -403,6 +413,12 @@ function getScoreClass(m) {
         <strong>⚠️ Schema bijgewerkt naar FIFA-bracket.</strong>
         Je teamkeuzes zijn overgenomen en staan vast sinds 11 juni. Je kunt
         nog wel je <strong>scores aanpassen</strong> tot zondag 28 juni 20:00.
+      </div>
+      <div v-if="roundNr >= 4" class="r3-note">
+        <strong>ℹ️ Landen staan vast, scores nog aanpasbaar.</strong>
+        De deadline voor het kiezen van landen is voor deze ronde verlopen —
+        die keuzes staan vast. Je kunt wél nog je <strong>scores aanpassen</strong>
+        tot 1 uur voor aftrap.
       </div>
     </div>
 

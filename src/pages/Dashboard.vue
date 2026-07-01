@@ -254,42 +254,15 @@ async function dismissIntro() {
         <router-link to="/stand" class="ss-link">Volledige stand →</router-link>
       </div>
 
-      <!-- Aftelklok met alle drie de rondes die op dezelfde deadline sluiten -->
-      <div v-if="countdown" class="countdown-card">
-        <div class="countdown-header">
-          <div class="countdown-label">Eerstvolgende deadline</div>
-          <div class="countdown-deadlines">
-            <span v-for="r in upcomingDeadlines" :key="r.nr" class="deadline-pill mono">
-              R{{ r.nr }} {{ r.name }}
-            </span>
-          </div>
-        </div>
-        <div class="countdown-clock mono">
-          <div class="clock-cell">
-            <span class="num">{{ countdown.days }}</span>
-            <span class="unit">d</span>
-          </div>
-          <div class="clock-cell">
-            <span class="num">{{ countdown.hours }}</span>
-            <span class="unit">u</span>
-          </div>
-          <div class="clock-cell">
-            <span class="num">{{ String(countdown.minutes).padStart(2, '0') }}</span>
-            <span class="unit">m</span>
-          </div>
-          <div class="clock-cell">
-            <span class="num">{{ String(countdown.seconds).padStart(2, '0') }}</span>
-            <span class="unit">s</span>
-          </div>
-        </div>
-        <div v-if="upcomingDeadlines.length > 1" class="countdown-note">
-          {{ upcomingDeadlines.length }} rondes sluiten tegelijk op
-          {{ new Date(nextDeadline.deadline).toLocaleString('nl-NL', { weekday: 'long', day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' }) }}
-        </div>
-      </div>
-
-      <div v-else class="card" style="margin-bottom: var(--s-5)">
-        <p class="muted" style="margin: 0">Geen openstaande deadlines op dit moment.</p>
+      <!-- Deadlines per wedstrijd — geen algemene aftelklok meer -->
+      <div class="card" style="margin-bottom: var(--s-5)">
+        <p style="margin: 0">
+          <strong>Voorspellingen sluiten per wedstrijd.</strong>
+          Landen kies je vóór de team-deadline (1 uur voor de voorgaande wedstrijd start).
+          Scores kun je nog aanpassen tot <strong>1 uur voor aftrap</strong>.
+          Ga naar de tab <router-link to="/voorspellingen">Voorspellingen</router-link>
+          om per ronde je invoer te bekijken.
+        </p>
       </div>
 
       <div v-if="announcements.length" class="ann-block" style="margin-bottom: var(--s-5)">
