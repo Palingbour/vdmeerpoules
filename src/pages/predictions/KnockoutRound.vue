@@ -319,9 +319,12 @@ function onChange(matchId) {
     return
   }
 
-  // Bonus slots vereisen géén team-voorspelling
-  const homeOK = isSlotBonus(m.slot_home_type) || p.pred_home
-  const awayOK = isSlotBonus(m.slot_away_type) || p.pred_away
+  // Bonus slots vereisen géén team-voorspelling.
+  // Ook wanneer team-lock actief is (deadline verstreken) mag de score
+  // worden opgeslagen zonder team-keuze — de speler kon toch niet meer
+  // kiezen. Team blijft dan null, scoring kent enkel winnaar/exact-pt toe.
+  const homeOK = isSlotBonus(m.slot_home_type) || isTeamLocked(m) || p.pred_home
+  const awayOK = isSlotBonus(m.slot_away_type) || isTeamLocked(m) || p.pred_away
 
   // Geblokkeerde slots kunnen niet ingevuld worden — sla niet op
   if (isSlotBlocked(m.slot_home_type, m.slot_home_match_dep) ||
