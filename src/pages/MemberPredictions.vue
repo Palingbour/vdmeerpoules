@@ -97,9 +97,13 @@ function teamName(id) {
   return teamById(id)?.name || '?'
 }
 
+// Score-deadline: 1 uur voor kickoff. Andermans voorspellingen worden
+// pas zichtbaar zodra deze deadline is verstreken (matcht de RLS
+// policy én de scoring-flow in KnockoutRound.vue).
 function isMatchDeadlinePassed(m) {
-  if (!m?.prediction_deadline_at) return false
-  return new Date(m.prediction_deadline_at) < now.value
+  if (!m?.kickoff_at) return false
+  const oneHourBefore = new Date(new Date(m.kickoff_at).getTime() - 60 * 60 * 1000)
+  return oneHourBefore < now.value
 }
 
 // Resolve voorspelling-team voor een R4-R7 slot, rekening houdend met
